@@ -3,6 +3,7 @@
 
 #include "rkdg_swe_kernels_processor.hpp"
 #include "problem/SWE/problem_slope_limiter/swe_CS_sl_serial.hpp"
+#include "problem/SWE/seabed_update/swe_seabed_update.hpp"
 
 namespace SWE {
 namespace RKDG {
@@ -39,14 +40,45 @@ void Problem::stage_serial(DiscretizationType<ProblemType>& discretization,
     discretization.mesh.CallForEachBoundary([&stepper](auto& bound) { Problem::boundary_kernel(stepper, bound); });
 
     discretization.mesh.CallForEachElement([&stepper](auto& elt) {
-        auto& state = elt.data.state[stepper.GetStage()];
+        const uint stage = stepper.GetStage();
+        auto& state      = elt.data.state;
+        auto& curr_state = elt.data.state[stage];
+        auto& next_state = elt.data.state[stage + 1];
 
-        state.solution = elt.ApplyMinv(state.rhs);
-
+        curr_state.solution = elt.ApplyMinv(curr_state.rhs);
         stepper.UpdateState(elt);
+
+        if (SWE::SedimentTransport::bed_update) {
+            if (stage + 1 == stepper.GetNumStages()) {
+                // swap back if we are at the last stage
+                std::swap(state[0].q, state[stepper.GetNumStages()].q);
+            }
+
+            curr_state.b_solution = elt.ApplyMinv(curr_state.b_rhs);
+            set_constant(row(next_state.aux, SWE::Auxiliaries::bath), 0.0);
+            set_constant(row(next_state.q, SWE::Variables::ze), 0.0);
+            for (uint s = 0; s <= stage; ++s) {
+                row(next_state.aux, SWE::Auxiliaries::bath) +=
+                    stepper.ark[stage][s] * row(state[s].aux, SWE::Auxiliaries::bath) +
+                    stepper.GetDT() * stepper.brk[stage][s] * state[s].b_solution;
+
+                row(next_state.q, SWE::Variables ::ze) +=
+                    stepper.ark[stage][s] * row(state[s].q, SWE::Variables::ze) +
+                    stepper.GetDT() * stepper.brk[stage][s] * row(state[s].solution, SWE::Variables::ze) -
+                    stepper.GetDT() * stepper.brk[stage][s] * state[s].b_solution;
+            }
+
+            if (stage + 1 == stepper.GetNumStages()) {
+                std::swap(state[0].q, state[stepper.GetNumStages()].q);
+                std::swap(state[0].aux, state[stepper.GetNumStages()].aux);
+            }
+        }
     });
 
     ++stepper;
+
+    if (SWE::SedimentTransport::bed_slope_limiting)
+        SWE::CS_seabed_slope_limiter(stepper, discretization);
 
     if (SWE::PostProcessing::wetting_drying) {
         discretization.mesh.CallForEachElement([&stepper](auto& elt) { wetting_drying_kernel(stepper, elt); });

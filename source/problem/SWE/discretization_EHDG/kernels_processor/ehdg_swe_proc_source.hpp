@@ -10,9 +10,7 @@ void Problem::local_source_kernel(const ProblemStepperType& stepper, ElementType
     if (elt.data.wet_dry_state.wet) {
         auto& state    = elt.data.state[stepper.GetStage()];
         auto& internal = elt.data.internal;
-
-        SWE::get_source(stepper.GetTimeAtCurrentStage(), elt);
-
+        SWE::get_source(stepper, elt);
         state.rhs += elt.IntegrationPhi(internal.source_at_gp);
     }
 }

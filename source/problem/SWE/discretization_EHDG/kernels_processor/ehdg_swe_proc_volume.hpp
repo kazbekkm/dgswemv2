@@ -12,15 +12,12 @@ void Problem::local_volume_kernel(const ProblemStepperType& stepper, ElementType
     set_constant(state.rhs, 0.0);
 
     if (elt.data.wet_dry_state.wet) {
-        auto& internal = elt.data.internal;
-
+        auto& internal   = elt.data.internal;
         internal.q_at_gp = elt.ComputeUgp(state.q);
-
         row(internal.aux_at_gp, SWE::Auxiliaries::h) =
             row(internal.q_at_gp, SWE::Variables::ze) + row(internal.aux_at_gp, SWE::Auxiliaries::bath);
 
         SWE::get_F(internal.q_at_gp, internal.aux_at_gp, internal.Fx_at_gp, internal.Fy_at_gp);
-
         state.rhs = elt.IntegrationDPhi(GlobalCoord::x, internal.Fx_at_gp) +
                     elt.IntegrationDPhi(GlobalCoord::y, internal.Fy_at_gp);
     }

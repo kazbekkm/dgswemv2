@@ -56,6 +56,7 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
                 u_node(SWE::Variables::ze, node_id) = problem_specific_input.initial_conditions.ze_initial;
                 u_node(SWE::Variables::qx, node_id) = problem_specific_input.initial_conditions.qx_initial;
                 u_node(SWE::Variables::qy, node_id) = problem_specific_input.initial_conditions.qy_initial;
+                u_node(SWE::Variables::hc, node_id) = problem_specific_input.initial_conditions.hc_initial;
             }
             state.q = elt.L2ProjectionNode(u_node);
         } else if (problem_specific_input.initial_conditions.type == SWE::InitialConditionsType::Function) {
@@ -164,36 +165,51 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
     // SOURCE TERMS INITIALIZE
     // Manning N bottom friction
     if (problem_specific_input.bottom_friction.type == SWE::BottomFrictionType::Manning) {
-        if (!Utilities::file_exists(problem_specific_input.bottom_friction.manning_data_file)) {
-            throw std::logic_error("Fatal Error: manning factor data file " +
-                                   problem_specific_input.bottom_friction.manning_data_file + " was not found!\n");
-        }
-
-        std::ifstream manning_file(problem_specific_input.bottom_friction.manning_data_file);
-        std::map<uint, double> node_manning_n;
-        std::string line;
-        while (std::getline(manning_file, line)) {
-            std::istringstream input_string(line);
-            uint node_ID;
-            double manning_n;
-            if (!(input_string >> node_ID >> manning_n))
-                break;
-            node_manning_n[node_ID] = manning_n;
-        }
-
-        mesh.CallForEachElement([&node_manning_n](auto& elt) {
-            const std::vector<uint>& node_ID = elt.GetNodeID();
-            for (uint node = 0; node < elt.data.get_nnode(); ++node) {
-                elt.data.source.manning_n[node] = node_manning_n[node_ID[node]];
+        if (!problem_specific_input.bottom_friction.manning_data_file.empty()) {
+            if (!Utilities::file_exists(problem_specific_input.bottom_friction.manning_data_file)) {
+                throw std::logic_error("Fatal Error: manning factor data file " +
+                                       problem_specific_input.bottom_friction.manning_data_file + " was not found!\n");
             }
 
-            elt.data.source.manning = true;
-            elt.data.source.g_manning_n_sq =
-                Global::g *
-                std::pow(std::accumulate(elt.data.source.manning_n.begin(), elt.data.source.manning_n.end(), 0.0) /
-                             elt.data.source.manning_n.size(),
-                         2);
-        });
+            std::ifstream manning_file(problem_specific_input.bottom_friction.manning_data_file);
+            std::map<uint, double> node_manning_n;
+            std::string line;
+            while (std::getline(manning_file, line)) {
+                std::istringstream input_string(line);
+                uint node_ID;
+                double manning_n;
+                if (!(input_string >> node_ID >> manning_n))
+                    break;
+                node_manning_n[node_ID] = manning_n;
+            }
+
+            mesh.CallForEachElement([&node_manning_n](auto& elt) {
+                const std::vector<uint>& node_ID = elt.GetNodeID();
+                for (uint node = 0; node < elt.data.get_nnode(); ++node) {
+                    elt.data.source.manning_n[node] = node_manning_n[node_ID[node]];
+                }
+
+                elt.data.source.manning = true;
+                elt.data.source.g_manning_n_sq =
+                    Global::g *
+                    std::pow(std::accumulate(elt.data.source.manning_n.begin(), elt.data.source.manning_n.end(), 0.0) /
+                                 elt.data.source.manning_n.size(),
+                             2);
+            });
+        } else {
+            mesh.CallForEachElement([&problem_specific_input](auto& elt) {
+                for (uint node = 0; node < elt.data.get_nnode(); ++node) {
+                    elt.data.source.manning_n[node] = problem_specific_input.bottom_friction.manning_n;
+                }
+
+                elt.data.source.manning = true;
+                elt.data.source.g_manning_n_sq =
+                    Global::g *
+                    std::pow(std::accumulate(elt.data.source.manning_n.begin(), elt.data.source.manning_n.end(), 0.0) /
+                                 elt.data.source.manning_n.size(),
+                             2);
+            });
+        }
     }
 
     // Coriolis effect
@@ -242,6 +258,7 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
                 for (uint vrtx = 0; vrtx < elt.data.get_nvrtx(); ++vrtx) {
                     wd_state.q_at_vrtx(SWE::Variables::qx, vrtx) = 0.0;
                     wd_state.q_at_vrtx(SWE::Variables::qy, vrtx) = 0.0;
+                    wd_state.q_at_vrtx(SWE::Variables::hc, vrtx) = 0.0;
                 }
                 state.q = elt.ProjectLinearToBasis(wd_state.q_at_vrtx);
                 set_constant(state.rhs, 0.0);
@@ -250,7 +267,7 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
     }
 
     // SLOPE LIMIT INITIALIZE
-    if (SWE::PostProcessing::slope_limiting) {
+    if (SWE::PostProcessing::slope_limiting || SWE::SedimentTransport::bed_slope_limiting) {
         mesh.CallForEachElement([](auto& elt) {
             auto& shape    = elt.GetShape();
             auto& sl_state = elt.data.slope_limit_state;
@@ -269,10 +286,7 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
 
             StatVector<double, SWE::n_dimensions> median;
             for (uint bound = 0; bound < elt.data.get_nbound(); ++bound) {
-                median[GlobalCoord::x] =
-                    sl_state.midpts_coord[bound][GlobalCoord::x] - sl_state.baryctr_coord[GlobalCoord::x];
-                median[GlobalCoord::y] =
-                    sl_state.midpts_coord[bound][GlobalCoord::y] - sl_state.baryctr_coord[GlobalCoord::y];
+                median                 = sl_state.midpts_coord[bound] - sl_state.baryctr_coord;
                 sl_state.median[bound] = median / norm(median);
             }
         });
@@ -288,10 +302,7 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
         mesh.CallForEachBoundary([](auto& bound) {
             auto& sl_state = bound.data.slope_limit_state;
 
-            sl_state.baryctr_coord_neigh[bound.bound_id][GlobalCoord::x] =
-                2.0 * sl_state.midpts_coord[bound.bound_id][GlobalCoord::x] - sl_state.baryctr_coord[GlobalCoord::x];
-            sl_state.baryctr_coord_neigh[bound.bound_id][GlobalCoord::y] =
-                2.0 * sl_state.midpts_coord[bound.bound_id][GlobalCoord::y] - sl_state.baryctr_coord[GlobalCoord::y];
+            sl_state.baryctr_coord_neigh[bound.bound_id] = sl_state.midpts_coord[bound.bound_id];
         });
 
         mesh.CallForEachElement([](auto& elt) {
@@ -299,28 +310,38 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
 
             StatMatrix<double, 2, 2> A;
             StatVector<double, 2> b;
-
             for (uint bound = 0; bound < elt.data.get_nbound(); ++bound) {
-                uint element_1 = bound;
-                uint element_2 = (bound + 1) % elt.data.get_nbound();
-
-                if (!is_distributed(elt.GetBoundaryType()[element_1]) &&
-                    !is_distributed(elt.GetBoundaryType()[element_2])) {
-                    A(0, 0) = sl_state.baryctr_coord_neigh[element_1][GlobalCoord::x] -
-                              sl_state.baryctr_coord[GlobalCoord::x];
-                    A(1, 0) = sl_state.baryctr_coord_neigh[element_1][GlobalCoord::y] -
-                              sl_state.baryctr_coord[GlobalCoord::y];
-                    A(0, 1) = sl_state.baryctr_coord_neigh[element_2][GlobalCoord::x] -
-                              sl_state.baryctr_coord[GlobalCoord::x];
-                    A(1, 1) = sl_state.baryctr_coord_neigh[element_2][GlobalCoord::y] -
-                              sl_state.baryctr_coord[GlobalCoord::y];
-
-                    b[0] = sl_state.midpts_coord[bound][GlobalCoord::x] - sl_state.baryctr_coord[GlobalCoord::x];
-                    b[1] = sl_state.midpts_coord[bound][GlobalCoord::y] - sl_state.baryctr_coord[GlobalCoord::y];
-
-                    sl_state.alpha[bound] = inverse(A) * b;
-                    sl_state.r_sq[bound]  = sq_norm(b);
+                for (uint perm = 0; perm < 2; ++perm) {
+                    const uint element_1 = bound;
+                    const uint element_2 = (bound + perm + 1) % elt.data.get_nbound();
+                    if (!is_distributed(elt.GetBoundaryType()[element_1]) &&
+                        !is_distributed(elt.GetBoundaryType()[element_2])) {
+                        column(A, 0) = sl_state.baryctr_coord_neigh[element_1] - sl_state.baryctr_coord;
+                        column(A, 1) = sl_state.baryctr_coord_neigh[element_2] - sl_state.baryctr_coord;
+                        b            = sl_state.midpts_coord[bound] - sl_state.baryctr_coord;
+                        if (perm == 0) {
+                            sl_state.A_inv[bound]       = inverse(transpose(A));
+                            sl_state.inv_theta_r[bound] = 1 / (norm(transpose(A)) * norm(sl_state.A_inv[bound]));
+                        }
+                        const double sqnorm_b = sq_norm(b);
+                        solve_sle(A, b);
+                        for (uint i = 0; i < 2; ++i)
+                            if (Utilities::almost_equal(b[i], 0.0))
+                                b[i] = 0.0;
+                        if (b[0] >= 0.0 && b[1] >= 0.0) {
+                            sl_state.alpha[bound]          = b;
+                            sl_state.r_sq[bound]           = sqnorm_b;
+                            sl_state.a_elem[2 * bound]     = element_1;
+                            sl_state.a_elem[2 * bound + 1] = element_2;
+                            break;
+                        }
+                    }
                 }
+            }
+            const double inv_theta_r_sum =
+                std::accumulate(sl_state.inv_theta_r.begin(), sl_state.inv_theta_r.end(), 0.0);
+            for (uint bound = 0; bound < elt.data.get_nbound(); ++bound) {
+                sl_state.d_r[bound] = sl_state.inv_theta_r[bound] / inv_theta_r_sum;
             }
         });
     }
@@ -332,7 +353,7 @@ void initialize_data_parallel_pre_send(MeshType& mesh,
                                        uint comm_type) {
     initialize_data_serial(mesh, problem_specific_input);
 
-    if (SWE::PostProcessing::slope_limiting) {
+    if (SWE::PostProcessing::slope_limiting || SWE::SedimentTransport::bed_slope_limiting) {
         mesh.CallForEachDistributedBoundary([comm_type](auto& dbound) {
             auto& sl_state = dbound.data.slope_limit_state;
 
@@ -347,7 +368,7 @@ void initialize_data_parallel_pre_send(MeshType& mesh,
 
 template <typename MeshType>
 void initialize_data_parallel_post_receive(MeshType& mesh, uint comm_type) {
-    if (SWE::PostProcessing::slope_limiting) {
+    if (SWE::PostProcessing::slope_limiting || SWE::SedimentTransport::bed_slope_limiting) {
         mesh.CallForEachDistributedBoundary([comm_type](auto& dbound) {
             auto& sl_state = dbound.data.slope_limit_state;
 
@@ -363,28 +384,38 @@ void initialize_data_parallel_post_receive(MeshType& mesh, uint comm_type) {
 
             StatMatrix<double, 2, 2> A;
             StatVector<double, 2> b;
-
             for (uint bound = 0; bound < elt.data.get_nbound(); ++bound) {
-                uint element_1 = bound;
-                uint element_2 = (bound + 1) % elt.data.get_nbound();
-
-                if (is_distributed(elt.GetBoundaryType()[element_1]) ||
-                    is_distributed(elt.GetBoundaryType()[element_2])) {
-                    A(0, 0) = sl_state.baryctr_coord_neigh[element_1][GlobalCoord::x] -
-                              sl_state.baryctr_coord[GlobalCoord::x];
-                    A(1, 0) = sl_state.baryctr_coord_neigh[element_1][GlobalCoord::y] -
-                              sl_state.baryctr_coord[GlobalCoord::y];
-                    A(0, 1) = sl_state.baryctr_coord_neigh[element_2][GlobalCoord::x] -
-                              sl_state.baryctr_coord[GlobalCoord::x];
-                    A(1, 1) = sl_state.baryctr_coord_neigh[element_2][GlobalCoord::y] -
-                              sl_state.baryctr_coord[GlobalCoord::y];
-
-                    b[0] = sl_state.midpts_coord[bound][GlobalCoord::x] - sl_state.baryctr_coord[GlobalCoord::x];
-                    b[1] = sl_state.midpts_coord[bound][GlobalCoord::y] - sl_state.baryctr_coord[GlobalCoord::y];
-
-                    sl_state.alpha[bound] = inverse(A) * b;
-                    sl_state.r_sq[bound]  = sq_norm(b);
+                for (uint perm = 0; perm < 2; ++perm) {
+                    const uint element_1 = bound;
+                    const uint element_2 = (bound + perm + 1) % elt.data.get_nbound();
+                    if (is_distributed(elt.GetBoundaryType()[element_1]) ||
+                        is_distributed(elt.GetBoundaryType()[element_2])) {
+                        column(A, 0) = sl_state.baryctr_coord_neigh[element_1] - sl_state.baryctr_coord;
+                        column(A, 1) = sl_state.baryctr_coord_neigh[element_2] - sl_state.baryctr_coord;
+                        b            = sl_state.midpts_coord[bound] - sl_state.baryctr_coord;
+                        if (perm == 0) {
+                            sl_state.A_inv[bound]       = inverse(transpose(A));
+                            sl_state.inv_theta_r[bound] = 1 / (norm(transpose(A)) * norm(sl_state.A_inv[bound]));
+                        }
+                        const double sqnorm_b = sq_norm(b);
+                        solve_sle(A, b);
+                        for (uint i = 0; i < 2; ++i)
+                            if (Utilities::almost_equal(b[i], 0.0))
+                                b[i] = 0.0;
+                        if (b[0] >= 0.0 && b[1] >= 0.0) {
+                            sl_state.alpha[bound]          = b;
+                            sl_state.r_sq[bound]           = sqnorm_b;
+                            sl_state.a_elem[2 * bound]     = element_1;
+                            sl_state.a_elem[2 * bound + 1] = element_2;
+                            break;
+                        }
+                    }
                 }
+            }
+            const double inv_theta_r_sum =
+                std::accumulate(sl_state.inv_theta_r.begin(), sl_state.inv_theta_r.end(), 0.0);
+            for (uint bound = 0; bound < elt.data.get_nbound(); ++bound) {
+                sl_state.d_r[bound] = sl_state.inv_theta_r[bound] / inv_theta_r_sum;
             }
         });
     }

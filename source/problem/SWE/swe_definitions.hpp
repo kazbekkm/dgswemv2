@@ -5,11 +5,14 @@
 
 namespace SWE {
 namespace Global {
-static double g         = 9.81;
-static double rho_air   = 1.225;
-static double rho_water = 1000.0;
+static double g            = 9.81;
+static double rho_air      = 1.225;
+static double rho_water    = 1000.0;
+static double rho_sediment = 2500.0;  // 1540.0
+static double rho_bed      = 2500.0;
+static double sat_sediment = 0.0;  // 0.3
 
-const bool ignored_vars = Utilities::ignore(g, rho_air, rho_water);
+const bool ignored_vars = Utilities::ignore(g, rho_air, rho_water, rho_sediment, rho_bed, sat_sediment);
 }
 
 namespace SourceTerms {
@@ -23,6 +26,27 @@ static double Cf = 0.0;
 
 const bool ignored_vars =
     Utilities::ignore(function_source, bottom_friction, meteo_forcing, tide_potential, coriolis, Cf);
+}
+
+namespace SedimentTransport {
+static bool bed_update         = false;
+static bool bed_slope_limiting = false;
+static bool bed_load           = false;
+static bool suspended_load     = false;
+
+static double A = 0.0;
+
+static double d       = 0.0;
+static double v       = 0.0;
+static double phi     = 0.0;
+static double theta_c = 0.0;
+
+// Cockburn-Shu SL parameters
+static double M  = 1.0e-8;
+static double nu = 1.5;
+
+const bool ignored_vars =
+    Utilities::ignore(bed_update, bed_slope_limiting, bed_load, suspended_load, A, d, v, phi, theta_c, M, nu);
 }
 
 namespace PostProcessing {
@@ -41,9 +65,9 @@ const bool ignored_vars = Utilities::ignore(wetting_drying, slope_limiting, h_o,
 
 constexpr uint n_dimensions = 2;
 
-constexpr uint n_variables   = 3;
+constexpr uint n_variables   = 4;
 constexpr uint n_auxiliaries = 3;
-enum Variables : uint { ze = 0, qx = 1, qy = 2 };
+enum Variables : uint { ze = 0, qx = 1, qy = 2, hc = 3 };
 enum Auxiliaries : uint { bath = 0, h = 1, sp = 2 };
 
 enum JacobianVariables : uint {

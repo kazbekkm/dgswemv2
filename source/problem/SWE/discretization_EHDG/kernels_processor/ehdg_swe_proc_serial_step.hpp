@@ -63,7 +63,16 @@ void Problem::stage_serial(HDGDiscretization<ProblemType>& discretization,
     });
     /* Local Step */
 
+    if (SWE::SedimentTransport::bed_update)
+        SWE::seabed_update(stepper, discretization);
+
     ++stepper;
+
+    if (SWE::SedimentTransport::bed_slope_limiting)
+        SWE::CS_seabed_slope_limiter(stepper, discretization);
+
+    if (SWE::SedimentTransport::bed_update)
+        SWE::seabed_data_update(stepper, discretization);
 
     if (SWE::PostProcessing::wetting_drying) {
         discretization.mesh.CallForEachElement([&stepper](auto& elt) { wetting_drying_kernel(stepper, elt); });

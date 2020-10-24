@@ -31,6 +31,11 @@ class DistributedLevee {
 
     template <typename EdgeDistributedType>
     void ComputeNumericalFlux(EdgeDistributedType& edge_dbound);
+
+    template <typename DistributedBoundaryType>
+    void ComputeBedFlux(DistributedBoundaryType& dbound) {
+        abort();  // no implementation
+    }
 };
 
 DistributedLevee::DistributedLevee(DBDataExchanger exchanger, const std::vector<LeveeInput>& levee_input)
@@ -57,7 +62,7 @@ void DistributedLevee::Initialize(DistributedBoundaryType& dbound) {
 
 template <typename EdgeDistributedType>
 void DistributedLevee::ComputeNumericalFlux(EdgeDistributedType& edge_dbound) {
-    // Something to implement in the future
+    abort();  // no implementation
 }
 }
 }

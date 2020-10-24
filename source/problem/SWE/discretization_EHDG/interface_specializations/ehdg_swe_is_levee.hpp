@@ -27,6 +27,11 @@ class Levee {
 
     template <typename EdgeInterfaceType>
     void ComputeNumericalFlux(EdgeInterfaceType& edge_int);
+
+    template <typename InterfaceType>
+    void ComputeBedFlux(InterfaceType& intface) {
+        abort();  // no implementation
+    }
 };
 
 Levee::Levee(const std::vector<LeveeInput>& levee_input) {
@@ -52,7 +57,7 @@ void Levee::Initialize(InterfaceType& intface) {
 
 template <typename EdgeInterfaceType>
 void Levee::ComputeNumericalFlux(EdgeInterfaceType& edge_int) {
-    // Something to implement in the future
+    abort();  // no implementation
 }
 }
 }

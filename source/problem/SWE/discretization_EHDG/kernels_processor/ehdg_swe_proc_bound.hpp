@@ -6,10 +6,11 @@ namespace EHDG {
 template <typename BoundaryType>
 void Problem::global_boundary_kernel(const ProblemStepperType& stepper, BoundaryType& bound) {
     if (bound.data.wet_dry_state.wet) {
-        auto& state    = bound.data.state[stepper.GetStage()];
-        auto& boundary = bound.data.boundary[bound.bound_id];
-
+        auto& state      = bound.data.state[stepper.GetStage()];
+        auto& boundary   = bound.data.boundary[bound.bound_id];
         boundary.q_at_gp = bound.ComputeUgp(state.q);
+        row(boundary.aux_at_gp, SWE::Auxiliaries::h) =
+            row(boundary.q_at_gp, SWE::Variables::ze) + row(boundary.aux_at_gp, SWE::Auxiliaries::bath);
     }
 }
 
@@ -18,8 +19,6 @@ void Problem::local_boundary_kernel(const ProblemStepperType& stepper, BoundaryT
     if (bound.data.wet_dry_state.wet) {
         auto& state    = bound.data.state[stepper.GetStage()];
         auto& boundary = bound.data.boundary[bound.bound_id];
-
-        // now compute contributions to the righthand side
         state.rhs -= bound.IntegrationPhi(boundary.F_hat_at_gp);
     }
 }

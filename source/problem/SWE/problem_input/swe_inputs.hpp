@@ -19,6 +19,7 @@ struct InitialConditions {
     double ze_initial          = 0.;
     double qx_initial          = 0.;
     double qy_initial          = 0.;
+    double hc_initial          = 0.;
 };
 
 // Problem specific bcis information containers
@@ -90,6 +91,7 @@ struct FunctionSource {
 struct BottomFriction {
     BottomFrictionType type = BottomFrictionType::None;
     double coefficient      = 0.0;
+    double manning_n        = 0.0;
     std::string manning_data_file;
 };
 
@@ -107,6 +109,22 @@ struct TidePotential {
 
 struct Coriolis {
     CoriolisType type = CoriolisType::None;
+};
+
+struct SedTransport {
+    bool bed_update       = false;
+    bool bath_slope_limit = false;
+    bool bed_load         = false;
+    bool suspended_load   = false;
+
+    double A = 0.0;
+
+    double d              = 0.0;
+    double nu             = 0.0;
+    double phi            = 0.0;
+    double theta_c        = 0.0;
+    double rho_sediment   = 0.0;
+    double saturation_bed = 0.0;
 };
 
 // Problem specific postprocessing information containers
@@ -142,6 +160,7 @@ struct Inputs {
     MeteoForcing meteo_forcing;
     TidePotential tide_potential;
     Coriolis coriolis;
+    SedTransport sediment_transport;
 
     WettingDrying wet_dry;
     SlopeLimiting slope_limit;

@@ -1,10 +1,10 @@
-#ifndef RKDG_SWE_LLF_FLUX_HPP
-#define RKDG_SWE_LLF_FLUX_HPP
+#ifndef RKDG_SWE_HLL_FLUX_HPP
+#define RKDG_SWE_HLL_FLUX_HPP
 
 namespace SWE {
 namespace RKDG {
 // The normal points form the interior side (in) to the exterior side (ex)
-void LLF_flux(const double gravity,
+void HLL_flux(const double gravity,
               const Column<HybMatrix<double, SWE::n_variables>>& q_in,
               const Column<HybMatrix<double, SWE::n_variables>>& q_ex,
               const Column<HybMatrix<double, SWE::n_auxiliaries>>& aux_in,
@@ -24,8 +24,8 @@ void LLF_flux(const double gravity,
     const double un_in = u_in * surface_normal[GlobalCoord::x] + v_in * surface_normal[GlobalCoord::y];
     const double un_ex = u_ex * surface_normal[GlobalCoord::x] + v_ex * surface_normal[GlobalCoord::y];
 
-    const double max_eigenvalue =
-        std::max(std::abs(un_in) + std::sqrt(gravity * h_in), std::abs(un_ex) + std::sqrt(gravity * h_ex));
+    const double s_in = std::min(un_in - std::sqrt(gravity * h_in), un_ex - std::sqrt(gravity * h_ex));
+    const double s_ex = std::max(un_in + std::sqrt(gravity * h_in), un_ex + std::sqrt(gravity * h_ex));
 
     StatVector<double, SWE::n_variables> Fn_in;
     StatVector<double, SWE::n_variables> Fn_ex;
@@ -59,7 +59,13 @@ void LLF_flux(const double gravity,
     Fn_ex[SWE::Variables::qy] = uvh_ex * nx + (vvh_ex + pe_ex) * ny;
     Fn_ex[SWE::Variables::hc] = hcu_ex * nx + hcv_ex * ny;
 
-    F_hat = 0.5 * (Fn_in + Fn_ex + max_eigenvalue * (q_in - q_ex));
+    if (s_in >= 0) {
+        F_hat = Fn_in;
+    } else if (s_ex <= 0) {
+        F_hat = Fn_ex;
+    } else if (s_in < 0 && s_ex > 0) {
+        F_hat = ((s_ex * Fn_in - s_in * Fn_ex) - s_in * s_ex * (q_in - q_ex)) / (s_ex - s_in);
+    }
 }
 }
 }

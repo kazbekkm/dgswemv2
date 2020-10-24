@@ -26,11 +26,13 @@ void compute_bc_trace(EdgeBoundaryType& edge_bound) {
         get_dAplus_dze(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAplus_dze);
         get_dAplus_dqx(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAplus_dqx);
         get_dAplus_dqy(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAplus_dqy);
+        get_dAplus_dhc(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAplus_dhc);
 
         get_Aminus(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.Aminus);
         get_dAminus_dze(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAminus_dze);
         get_dAminus_dqx(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAminus_dqx);
         get_dAminus_dqy(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAminus_dqy);
+        get_dAminus_dhc(q_hat_at_gp, aux_hat_at_gp, surface_normal, boundary_condition.dAminus_dhc);
 
         for (uint gp = 0; gp < edge_bound.edge_data.get_ngp(); ++gp) {
             auto q     = column(boundary.q_at_gp, gp);
@@ -46,6 +48,8 @@ void compute_bc_trace(EdgeBoundaryType& edge_bound) {
                 boundary_condition.dAplus_dqx[gp] * (q - q_hat) - boundary_condition.dAminus_dqx[gp] * (q_inf - q_hat);
             column(dB_dq_hat, SWE::Variables::qy) +=
                 boundary_condition.dAplus_dqy[gp] * (q - q_hat) - boundary_condition.dAminus_dqy[gp] * (q_inf - q_hat);
+            column(dB_dq_hat, SWE::Variables::hc) +=
+                boundary_condition.dAplus_dhc[gp] * (q - q_hat) - boundary_condition.dAminus_dhc[gp] * (q_inf - q_hat);
 
             column(edge_internal.delta_hat_global_kernel_at_gp, gp) = flatten<double>(dB_dq_hat);
             column(edge_internal.rhs_global_kernel_at_gp, gp) =

@@ -47,12 +47,13 @@ Inputs::Inputs(YAML::Node& swe_node) {
 
             if (ic_str == "Constant") {
                 if (ic_node["initial_surface_height"] && ic_node["initial_momentum_x"] &&
-                    ic_node["initial_momentum_y"]) {
+                    ic_node["initial_momentum_y"] && ic_node["initial_sediment_hc"]) {
                     this->initial_conditions.type = InitialConditionsType::Constant;
 
                     this->initial_conditions.ze_initial = ic_node["initial_surface_height"].as<double>();
                     this->initial_conditions.qx_initial = ic_node["initial_momentum_x"].as<double>();
                     this->initial_conditions.qy_initial = ic_node["initial_momentum_y"].as<double>();
+                    this->initial_conditions.hc_initial = ic_node["initial_sediment_hc"].as<double>();
                 } else {
                     std::cerr << malformatted_ic_warning;
                 }
@@ -102,11 +103,14 @@ Inputs::Inputs(YAML::Node& swe_node) {
                     std::cerr << malformatted_bf_warning;
                 }
             } else if (bf_str == "Manning") {
-                if (bf_node["coefficient"] && bf_node["input_file"]) {
+                if (bf_node["coefficient"] && (bf_node["input_file"] || bf_node["manning_n"])) {
                     this->bottom_friction.type = BottomFrictionType::Manning;
 
-                    this->bottom_friction.coefficient       = bf_node["coefficient"].as<double>();
-                    this->bottom_friction.manning_data_file = bf_node["input_file"].as<std::string>();
+                    this->bottom_friction.coefficient = bf_node["coefficient"].as<double>();
+                    if (bf_node["input_file"])
+                        this->bottom_friction.manning_data_file = bf_node["input_file"].as<std::string>();
+                    else
+                        this->bottom_friction.manning_n = bf_node["manning_n"].as<double>();
 
                     if (this->bottom_friction.coefficient < 0.) {
                         throw std::logic_error("Fatal Error: Chezy friction coefficient must be postive!\n");
@@ -169,6 +173,43 @@ Inputs::Inputs(YAML::Node& swe_node) {
             }
         } else {
             std::cerr << malformatted_coriolis_warning;
+        }
+    }
+
+    const std::string malformatted_sediment_warning(
+        "Warning: sediment transport is mal-formatted. Using default parameters.\n");
+
+    if (YAML::Node st_node = swe_node["sediment_transport"]) {
+        if (st_node["suspended_load"]) {
+            YAML::Node susp_load_node = st_node["suspended_load"];
+            if (susp_load_node["d"] && susp_load_node["nu"] && susp_load_node["phi"] && susp_load_node["theta_c"] &&
+                susp_load_node["density_sediment"] && susp_load_node["saturation_bed"]) {
+                this->sediment_transport.bed_update     = true;
+                this->sediment_transport.suspended_load = true;
+                this->sediment_transport.d              = susp_load_node["d"].as<double>();
+                this->sediment_transport.nu             = susp_load_node["nu"].as<double>();
+                this->sediment_transport.phi            = susp_load_node["phi"].as<double>();
+                this->sediment_transport.theta_c        = susp_load_node["theta_c"].as<double>();
+                this->sediment_transport.rho_sediment   = susp_load_node["density_sediment"].as<double>();
+                this->sediment_transport.saturation_bed = susp_load_node["saturation_bed"].as<double>();
+            } else {
+                std::cerr << malformatted_sediment_warning;
+            }
+        }
+
+        if (st_node["bed_load"]) {
+            YAML::Node bed_load_node = st_node["bed_load"];
+            if (bed_load_node["A"]) {
+                this->sediment_transport.bed_update = true;
+                this->sediment_transport.bed_load   = true;
+                this->sediment_transport.A          = bed_load_node["A"].as<double>();
+            } else {
+                std::cerr << malformatted_sediment_warning;
+            }
+        }
+
+        if (st_node["slope_limiting"] && this->sediment_transport.bed_update) {
+            this->sediment_transport.bath_slope_limit = true;
         }
     }
 
@@ -343,6 +384,7 @@ YAML::Node Inputs::as_yaml_node() {
             ic_node["initial_surface_height"] = this->initial_conditions.ze_initial;
             ic_node["initial_momentum_x"]     = this->initial_conditions.qx_initial;
             ic_node["initial_momentum_y"]     = this->initial_conditions.qy_initial;
+            ic_node["initial_sediment_hc"]    = this->initial_conditions.hc_initial;
 
             ret["initial_conditions"] = ic_node;
             break;
@@ -374,7 +416,10 @@ YAML::Node Inputs::as_yaml_node() {
         case BottomFrictionType::Manning:
             bf_node["type"]        = "Manning";
             bf_node["coefficient"] = this->bottom_friction.coefficient;
-            bf_node["input_file"]  = this->bottom_friction.manning_data_file;
+            if (!this->bottom_friction.manning_data_file.empty())
+                bf_node["input_file"] = this->bottom_friction.manning_data_file;
+            else
+                bf_node["manning_n"] = this->bottom_friction.manning_n;
 
             ret["bottom_friction"] = bf_node;
             break;
@@ -411,6 +456,25 @@ YAML::Node Inputs::as_yaml_node() {
         case CoriolisType::Enable:
             ret["coriolis"] = "Enable";
             break;
+    }
+
+    YAML::Node st_node;
+    if (this->sediment_transport.bed_update) {
+        if (this->sediment_transport.suspended_load) {
+            st_node["suspended_load"]["d"]                = this->sediment_transport.d;
+            st_node["suspended_load"]["nu"]               = this->sediment_transport.nu;
+            st_node["suspended_load"]["phi"]              = this->sediment_transport.phi;
+            st_node["suspended_load"]["theta_c"]          = this->sediment_transport.theta_c;
+            st_node["suspended_load"]["density_sediment"] = this->sediment_transport.rho_sediment;
+            st_node["suspended_load"]["saturation_bed"]   = this->sediment_transport.saturation_bed;
+        }
+        if (this->sediment_transport.bed_load) {
+            st_node["bed_load"]["A"] = this->sediment_transport.A;
+        }
+        if (this->sediment_transport.bath_slope_limit) {
+            st_node["slope_limiting"] = "Enable";
+        }
+        ret["sediment_transport"] = st_node;
     }
 
     YAML::Node wd_node;
