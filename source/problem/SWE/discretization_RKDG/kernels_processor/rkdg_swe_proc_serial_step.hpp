@@ -3,9 +3,15 @@
 
 #include "rkdg_swe_kernels_processor.hpp"
 #include "problem/SWE/problem_slope_limiter/swe_CS_sl_serial.hpp"
+#include "problem/SWE/seabed_update/swe_seabed_update.hpp"
 
 namespace SWE {
 namespace RKDG {
+template <template <typename> class DiscretizationType, typename ProblemType>
+void seabed_update(DiscretizationType<ProblemType>& discretization,
+                   typename ProblemType::ProblemGlobalDataType& global_data,
+                   typename ProblemType::ProblemStepperType& stepper);
+
 template <template <typename> class DiscretizationType, typename ProblemType>
 void Problem::step_serial(DiscretizationType<ProblemType>& discretization,
                           typename ProblemType::ProblemGlobalDataType& global_data,
@@ -18,6 +24,10 @@ void Problem::step_serial(DiscretizationType<ProblemType>& discretization,
         }
 
         Problem::stage_serial(discretization, global_data, stepper);
+    }
+
+    if (SWE::PostProcessing::bed_update && (stepper.GetStep() % SWE::PostProcessing::bed_update_freq == 0)) {
+        seabed_update(discretization, global_data, stepper);
     }
 
     if (writer.WritingOutput()) {
@@ -64,6 +74,16 @@ void Problem::stage_serial(DiscretizationType<ProblemType>& discretization,
             abort();
         }
     });
+}
+
+template <template <typename> class DiscretizationType, typename ProblemType>
+void seabed_update(DiscretizationType<ProblemType>& discretization,
+                   typename ProblemType::ProblemGlobalDataType& global_data,
+                   typename ProblemType::ProblemStepperType& stepper) {
+    SWE::seabed_update(stepper, discretization);
+    if (SWE::PostProcessing::bed_slope_limiting)
+        SWE::CS_seabed_slope_limiter(discretization);
+    SWE::seabed_data_update(discretization);
 }
 }
 }
