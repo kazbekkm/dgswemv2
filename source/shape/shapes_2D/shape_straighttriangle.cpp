@@ -1,0 +1,351 @@
+#include "../shapes_2D.hpp"
+
+namespace Shape {
+StraightTriangle::StraightTriangle(AlignedVector<Point<3>>&& nodal_coordinates)
+    : Shape<2>(std::move(nodal_coordinates)) {
+    // check if element nodes are ccw, swap if necessary
+    // note that point selection doesn't matter since the Jacobian is
+    // constant
+    if (this->GetJdet(AlignedVector<Point<2>>(0))[0] < 0) {
+        std::swap(this->nodal_coordinates[0], this->nodal_coordinates[2]);
+    }
+}
+
+std::vector<uint> StraightTriangle::GetBoundaryNodeID(const uint bound_id, const std::vector<uint>& node_ID) const {
+    std::vector<uint> bound_node_ID(2);
+
+    bound_node_ID[0] = node_ID[(bound_id + 1) % 3];
+    bound_node_ID[1] = node_ID[(bound_id + 2) % 3];
+
+    return bound_node_ID;
+}
+
+double StraightTriangle::GetArea() const {
+    return 0.5 * (this->nodal_coordinates[0][GlobalCoord::x] *
+                      (this->nodal_coordinates[1][GlobalCoord::y] - this->nodal_coordinates[2][GlobalCoord::y]) +
+                  this->nodal_coordinates[1][GlobalCoord::x] *
+                      (this->nodal_coordinates[2][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) +
+                  this->nodal_coordinates[2][GlobalCoord::x] *
+                      (this->nodal_coordinates[0][GlobalCoord::y] - this->nodal_coordinates[1][GlobalCoord::y]));
+}
+
+double StraightTriangle::GetRadius() const {
+    double ret = 1.0 / (4 * this->GetArea());
+    for (uint side = 0; side < 3; ++side) {
+        ret *= std::hypot(
+            this->nodal_coordinates[side][GlobalCoord::x] - this->nodal_coordinates[(side + 1) % 3][GlobalCoord::x],
+            this->nodal_coordinates[side][GlobalCoord::y] - this->nodal_coordinates[(side + 1) % 3][GlobalCoord::y]);
+    }
+    return ret;
+}
+
+double StraightTriangle::GetPerimeter() const {
+    double ret = 0;
+    for (uint side = 0; side < 3; ++side) {
+        ret += std::hypot(
+            this->nodal_coordinates[side][GlobalCoord::x] - this->nodal_coordinates[(side + 1) % 3][GlobalCoord::x],
+            this->nodal_coordinates[side][GlobalCoord::y] - this->nodal_coordinates[(side + 1) % 3][GlobalCoord::y]);
+    }
+    return ret;
+}
+
+std::vector<double> StraightTriangle::GetLengths() const {
+    std::vector<double> ret(3);
+    for (uint side = 0; side < 3; ++side) {
+        ret[side] = std::hypot(this->nodal_coordinates[(side + 1) % 3][GlobalCoord::x] -
+                                   this->nodal_coordinates[(side + 2) % 3][GlobalCoord::x],
+                               this->nodal_coordinates[(side + 1) % 3][GlobalCoord::y] -
+                                   this->nodal_coordinates[(side + 2) % 3][GlobalCoord::y]);
+    }
+    return ret;
+}
+
+Point<2> StraightTriangle::GetBarycentricCoordinates() const {
+    Point<2> baryctr_coord;
+
+    baryctr_coord[GlobalCoord::x] =
+        (this->nodal_coordinates[0][GlobalCoord::x] + this->nodal_coordinates[1][GlobalCoord::x] +
+         this->nodal_coordinates[2][GlobalCoord::x]) /
+        3.0;
+
+    baryctr_coord[GlobalCoord::y] =
+        (this->nodal_coordinates[0][GlobalCoord::y] + this->nodal_coordinates[1][GlobalCoord::y] +
+         this->nodal_coordinates[2][GlobalCoord::y]) /
+        3.0;
+
+    return baryctr_coord;
+}
+
+AlignedVector<Point<2>> StraightTriangle::GetMidpointCoordinates() const {
+    AlignedVector<Point<2>> midpoint_coord(3);
+
+    for (uint midpt = 0; midpt < 3; ++midpt) {
+        midpoint_coord[midpt][GlobalCoord::x] = (this->nodal_coordinates[(midpt + 1) % 3][GlobalCoord::x] +
+                                                 this->nodal_coordinates[(midpt + 2) % 3][GlobalCoord::x]) /
+                                                2.0;
+
+        midpoint_coord[midpt][GlobalCoord::y] = (this->nodal_coordinates[(midpt + 1) % 3][GlobalCoord::y] +
+                                                 this->nodal_coordinates[(midpt + 2) % 3][GlobalCoord::y]) /
+                                                2.0;
+    }
+
+    return midpoint_coord;
+}
+
+DynVector<double> StraightTriangle::GetJdet(const AlignedVector<Point<2>>& points) const {
+    DynVector<double> J_det(1);
+
+    StatMatrix<double, 2, 2> J;
+
+    J(0, 0) = (this->nodal_coordinates[1][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) / 2.0;
+    J(0, 1) = (this->nodal_coordinates[2][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) / 2.0;
+    J(1, 0) = (this->nodal_coordinates[1][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) / 2.0;
+    J(1, 1) = (this->nodal_coordinates[2][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) / 2.0;
+
+    J_det[0] = determinant(J);
+
+    return J_det;
+}
+
+DynVector<double> StraightTriangle::GetSurfaceJ(const uint bound_id, const AlignedVector<Point<2>>& points) const {
+    DynVector<double> surface_J(1);
+
+    surface_J[0] = std::sqrt(pow(this->nodal_coordinates[(bound_id + 2) % 3][GlobalCoord::x] -
+                                     this->nodal_coordinates[(bound_id + 1) % 3][GlobalCoord::x],
+                                 2.0) +
+                             pow(this->nodal_coordinates[(bound_id + 2) % 3][GlobalCoord::y] -
+                                     this->nodal_coordinates[(bound_id + 1) % 3][GlobalCoord::y],
+                                 2.0)) /
+                   2.0;  // half length for straight edge
+
+    return surface_J;
+}
+
+AlignedVector<StatMatrix<double, 2, 2>> StraightTriangle::GetJinv(const AlignedVector<Point<2>>& points) const {
+    AlignedVector<StatMatrix<double, 2, 2>> J_inv(1);
+
+    StatMatrix<double, 2, 2> J;
+
+    J(0, 0) = (this->nodal_coordinates[1][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) / 2.0;
+    J(0, 1) = (this->nodal_coordinates[2][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) / 2.0;
+    J(1, 0) = (this->nodal_coordinates[1][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) / 2.0;
+    J(1, 1) = (this->nodal_coordinates[2][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) / 2.0;
+
+    J_inv[0] = inverse(J);
+
+    return J_inv;
+}
+
+AlignedVector<StatVector<double, 2>> StraightTriangle::GetSurfaceNormal(const uint bound_id,
+                                                                        const AlignedVector<Point<2>>& points) const {
+    AlignedVector<StatVector<double, 2>> surface_normal(1);
+
+    StatMatrix<double, 2, 2> J;
+
+    J(0, 0) = (this->nodal_coordinates[1][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) / 2.0;
+    J(0, 1) = (this->nodal_coordinates[2][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) / 2.0;
+    J(1, 0) = (this->nodal_coordinates[1][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) / 2.0;
+    J(1, 1) = (this->nodal_coordinates[2][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) / 2.0;
+
+    double det_J = determinant(J);
+    double cw    = det_J / std::abs(det_J);  // CW or CCW
+
+    double length = std::hypot(this->nodal_coordinates[(bound_id + 2) % 3][GlobalCoord::x] -
+                                   this->nodal_coordinates[(bound_id + 1) % 3][GlobalCoord::x],
+                               this->nodal_coordinates[(bound_id + 2) % 3][GlobalCoord::y] -
+                                   this->nodal_coordinates[(bound_id + 1) % 3][GlobalCoord::y]);
+
+    surface_normal[0][GlobalCoord::x] = cw *
+                                        (this->nodal_coordinates[(bound_id + 2) % 3][GlobalCoord::y] -
+                                         this->nodal_coordinates[(bound_id + 1) % 3][GlobalCoord::y]) /
+                                        length;
+    surface_normal[0][GlobalCoord::y] = -cw *
+                                        (this->nodal_coordinates[(bound_id + 2) % 3][GlobalCoord::x] -
+                                         this->nodal_coordinates[(bound_id + 1) % 3][GlobalCoord::x]) /
+                                        length;
+
+    return surface_normal;
+}
+
+DynMatrix<double> StraightTriangle::GetPsi(const AlignedVector<Point<2>>& points) const {
+    uint ndof = 3;
+    uint npt  = points.size();
+
+    DynMatrix<double> psi(ndof, npt);
+
+    for (uint pt = 0; pt < npt; ++pt) {
+        psi(0, pt) = -(points[pt][LocalCoordTri::z1] + points[pt][LocalCoordTri::z2]) / 2;  // N1
+        psi(1, pt) = (1 + points[pt][LocalCoordTri::z1]) / 2;                               // N2
+        psi(2, pt) = (1 + points[pt][LocalCoordTri::z2]) / 2;                               // N3
+    }
+
+    return psi;
+}
+
+std::array<DynMatrix<double>, 2> StraightTriangle::GetDPsi(const AlignedVector<Point<2>>& points) const {
+    uint ndof = 3;
+    uint npt  = points.size();
+
+    std::array<DynMatrix<double>, 2> dpsi;
+
+    DynMatrix<double> dpsi_dx(ndof, npt);
+    DynMatrix<double> dpsi_dy(ndof, npt);
+
+    StatMatrix<double, 2, 2> J_inv = this->GetJinv(points)[0];
+
+    for (uint pt = 0; pt < points.size(); ++pt) {
+        dpsi_dx(0, pt) =
+            -0.5 * J_inv(LocalCoordTri::z1, GlobalCoord::x) - 0.5 * J_inv(LocalCoordTri::z2, GlobalCoord::x);
+        dpsi_dy(0, pt) =
+            -0.5 * J_inv(LocalCoordTri::z1, GlobalCoord::y) - 0.5 * J_inv(LocalCoordTri::z2, GlobalCoord::y);
+
+        dpsi_dx(1, pt) = 0.5 * J_inv(LocalCoordTri::z1, GlobalCoord::x);
+        dpsi_dy(1, pt) = 0.5 * J_inv(LocalCoordTri::z1, GlobalCoord::y);
+
+        dpsi_dx(2, pt) = 0.5 * J_inv(LocalCoordTri::z2, GlobalCoord::x);
+        dpsi_dy(2, pt) = 0.5 * J_inv(LocalCoordTri::z2, GlobalCoord::y);
+    }
+
+    dpsi[GlobalCoord::x] = dpsi_dx;
+    dpsi[GlobalCoord::y] = dpsi_dy;
+
+    return dpsi;
+}
+
+DynMatrix<double> StraightTriangle::GetBoundaryPsi(const uint bound_id, const AlignedVector<Point<1>>& points) const {
+    uint ndof = 2;
+    uint npt  = points.size();
+
+    DynMatrix<double> psi_bound(ndof, npt);
+
+    for (uint pt = 0; pt < npt; ++pt) {
+        psi_bound(0, pt) = (1 - points[pt][LocalCoordTri::z1]) / 2;  // N1
+        psi_bound(1, pt) = (1 + points[pt][LocalCoordTri::z1]) / 2;  // N2
+    }
+
+    return psi_bound;
+}
+
+AlignedVector<Point<2>> StraightTriangle::LocalToGlobalCoordinates(const AlignedVector<Point<2>>& points) const {
+    uint npt = points.size();
+
+    AlignedVector<Point<2>> global_coordinates(npt);
+
+    DynMatrix<double> psi_pts = this->GetPsi(points);
+
+    for (uint pt = 0; pt < npt; ++pt) {
+        global_coordinates[pt][GlobalCoord::x] = this->nodal_coordinates[0][GlobalCoord::x] * psi_pts(0, pt) +
+                                                 this->nodal_coordinates[1][GlobalCoord::x] * psi_pts(1, pt) +
+                                                 this->nodal_coordinates[2][GlobalCoord::x] * psi_pts(2, pt);
+
+        global_coordinates[pt][GlobalCoord::y] = this->nodal_coordinates[0][GlobalCoord::y] * psi_pts(0, pt) +
+                                                 this->nodal_coordinates[1][GlobalCoord::y] * psi_pts(1, pt) +
+                                                 this->nodal_coordinates[2][GlobalCoord::y] * psi_pts(2, pt);
+    }
+
+    return global_coordinates;
+}
+
+AlignedVector<Point<2>> StraightTriangle::GlobalToLocalCoordinates(const AlignedVector<Point<2>>& points) const {
+    uint npt = points.size();
+
+    AlignedVector<Point<2>> local_coordinates(npt);
+
+    StatMatrix<double, 2, 2> T;
+
+    T(0, 0) = this->nodal_coordinates[1][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x];
+    T(0, 1) = this->nodal_coordinates[2][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x];
+    T(1, 0) = this->nodal_coordinates[1][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y];
+    T(1, 1) = this->nodal_coordinates[2][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y];
+
+    StatMatrix<double, 2, 2> T_inv = inverse(T);
+
+    StatVector<double, 2> lambda;
+
+    for (uint pt = 0; pt < npt; ++pt) {
+        lambda =
+            (points[pt][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) * column(T_inv, GlobalCoord::x) +
+            (points[pt][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) * column(T_inv, GlobalCoord::y);
+
+        local_coordinates[pt][LocalCoordTri::z1] = 2 * lambda[0] - 1.0;
+        local_coordinates[pt][LocalCoordTri::z2] = 2 * lambda[1] - 1.0;
+    }
+
+    return local_coordinates;
+}
+
+bool StraightTriangle::ContainsPoint(const Point<2>& point) const {
+    StatMatrix<double, 2, 2> T;
+
+    T(0, 0) = this->nodal_coordinates[1][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x];
+    T(0, 1) = this->nodal_coordinates[2][GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x];
+    T(1, 0) = this->nodal_coordinates[1][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y];
+    T(1, 1) = this->nodal_coordinates[2][GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y];
+
+    StatMatrix<double, 2, 2> T_inv = inverse(T);
+
+    StatVector<double, 2> lambda =
+        (point[GlobalCoord::x] - this->nodal_coordinates[0][GlobalCoord::x]) * column(T_inv, GlobalCoord::x) +
+        (point[GlobalCoord::y] - this->nodal_coordinates[0][GlobalCoord::y]) * column(T_inv, GlobalCoord::y);
+
+    if (lambda[0] >= 0.0 && lambda[1] >= 0.0 && lambda[0] + lambda[1] <= 1.0)
+        return true;
+
+    return false;
+}
+
+void StraightTriangle::GetVTK(AlignedVector<Point<3>>& points, Array2D<uint>& cells) const {
+    uint number_pt = points.size();
+
+    double z1;
+    double z2;
+    double dz = 2.0 / N_DIV;
+
+    for (uint i = 0; i <= N_DIV; ++i) {
+        for (uint j = 0; j <= N_DIV - i; ++j) {
+            points.push_back(Point<3>{0., 0., 0.});
+
+            z1 = -1.0 + dz * j;
+            z2 = -1.0 + dz * i;
+
+            points.back()[0] = this->nodal_coordinates[0][GlobalCoord::x] * (-(z1 + z2) / 2.0) +
+                               this->nodal_coordinates[1][GlobalCoord::x] * ((1 + z1) / 2.0) +
+                               this->nodal_coordinates[2][GlobalCoord::x] * ((1 + z2) / 2.0);
+
+            points.back()[1] = this->nodal_coordinates[0][GlobalCoord::y] * (-(z1 + z2) / 2.0) +
+                               this->nodal_coordinates[1][GlobalCoord::y] * ((1 + z1) / 2.0) +
+                               this->nodal_coordinates[2][GlobalCoord::y] * ((1 + z2) / 2.0);
+
+            points.back()[2] = 0;
+        }
+    }
+
+    uint pt_ID;
+
+    for (uint i = 0; i < N_DIV; ++i) {
+        for (uint j = 0; j < N_DIV - i; ++j) {
+            cells.push_back(std::vector<uint>(4));
+
+            pt_ID = number_pt + (N_DIV + 1) * (N_DIV + 2) / 2 - (N_DIV - i + 1) * (N_DIV - i + 2) / 2 + j;
+
+            cells.back()[0] = VTKElementTypes::straight_triangle;
+            cells.back()[1] = pt_ID;
+            cells.back()[2] = pt_ID + 1;
+            cells.back()[3] = pt_ID + (N_DIV + 1 - i);
+        }
+    }
+
+    for (uint i = 1; i < N_DIV; ++i) {
+        for (uint j = 0; j < N_DIV - i; ++j) {
+            cells.push_back(std::vector<uint>(4));
+
+            pt_ID = number_pt + (N_DIV + 1) * (N_DIV + 2) / 2 - (N_DIV - i + 1) * (N_DIV - i + 2) / 2 + j;
+
+            cells.back()[0] = VTKElementTypes::straight_triangle;
+            cells.back()[1] = pt_ID;
+            cells.back()[2] = pt_ID + 1;
+            cells.back()[3] = pt_ID - (N_DIV + 2 - i) + 1;
+        }
+    }
+}
+}

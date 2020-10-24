@@ -1,0 +1,28 @@
+###############################################################################
+#
+#  DGSWEMv2 input file
+#
+###############################################################################
+
+mesh:
+  format: Adcirc
+  file_name: quad_mesh.14
+  coordinate_system: cartesian
+
+timestepping:
+  start_time: 25-11-1987 00:00:00                
+  end_time: 25-11-1987 00:00:01                
+  dt: 0.001                          
+  order: 2
+  nstages: 2
+
+polynomial_order: 1
+
+problem:
+  name: rkdg_swe
+  gravity: 1.0
+  density_water: 1000
+  density_air: 1.225
+  initial_conditions:
+    type: Function
+  function_source: Enable

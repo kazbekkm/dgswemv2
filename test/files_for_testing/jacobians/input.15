@@ -1,0 +1,28 @@
+###############################################################################
+#
+#  DGSWEMv2 input file
+#
+###############################################################################
+
+mesh:
+  format: Adcirc
+  file_name: ../../test/files_for_testing/jacobians/mesh.14
+  coordinate_system: cartesian
+
+timestepping:
+  start_time: 01-01-2018 00:00:00
+  end_time: 01-01-2018 00:00:00              
+  dt: 1                           
+  order: 1
+  nstages: 1
+
+polynomial_order: 3
+
+problem:
+  name: rkdg_swe
+  gravity: 9.81
+  density_air: 1.225
+  density_water: 1000.0  
+  bottom_friction:
+    type: Chezy
+    coefficient: 0.003

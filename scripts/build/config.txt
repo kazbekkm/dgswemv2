@@ -1,0 +1,37 @@
+BUILD_TYPE=Release
+MACHINE=stampede2-knl
+#VERBOSE=true
+
+if [ "$MACHINE" == "oden-desktop" ]; then
+   echo "using oden-desktop"
+    NUM_BUILDCORES=4
+    MODULES="ubt18 gcc/8.2 mpich2/3.2 mkl/19.0 petsc/3.9.3-cxx-opt"
+
+    WORK=/workspace/bremer
+fi
+
+if [ "$MACHINE" == "stampede2-knl" ] || [ "$MACHINE" == "stampede2-skx" ]; then
+    NUM_BUILDCORES=16
+    MODULES="xalt/2.1.2 TACC gcc/7.1.0 boost/1.64 cmake/3.8.2 mkl/17.0.4"
+    CMAKE="cmake"
+
+#    VTUNE_MODULES="vtune/17.update4"
+#    VTUNE_DIR=/opt/intel/vtune_amplifier_xe_2017.4.0.518798
+
+    CXX_COMPILER="/opt/apps/gcc/7.1.0/bin/g++"
+    C_COMPILER="/opt/apps/gcc/7.1.0/bin/gcc"
+fi
+
+if [ "$MACHINE" == "peano" ]; then
+    NUM_BUILDCORES=16
+    MODULES="gnu/5.4.0 mvapich2/2.2 boost/1.63.0 cmake/3.9.2"
+    CMAKE="cmake"
+
+    CXX_COMPILER="/opt/ohpc/pub/compiler/gcc/5.4.0/bin/g++"
+fi
+
+BUILD_PATH=$WORK/dgswemv2_build_${BUILD_TYPE}_${MACHINE}
+INSTALL_PATH=$WORK/dgswemv2_install_${BUILD_TYPE}_${MACHINE}
+
+YAML_CPP_REPO_PATH=$WORK/yaml-cpp
+YAML_CPP_BUILD_PATH=$BUILD_PATH/yaml-cpp

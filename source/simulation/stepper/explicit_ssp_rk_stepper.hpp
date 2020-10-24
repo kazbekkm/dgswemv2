@@ -1,0 +1,86 @@
+#ifndef E_SSP_RK_STEPPER_HPP
+#define E_SSP_RK_STEPPER_HPP
+
+#include "general_definitions.hpp"
+#include "utilities/almost_equal.hpp"
+#include "preprocessor/input_parameters.hpp"
+
+/**
+ * Explicit Strong Stability preserving Runge-Kutta methods
+ * Class discretizes an ODE using strong stability preserving Runge Kutta methods.
+ */
+class ESSPRKStepper {
+  public:
+    Array2D<double> ark;
+    Array2D<double> brk;
+    Array2D<double> crk;
+    std::vector<double> drk;
+
+  private:
+    uint order;
+    uint nstages;
+    double dt;
+
+    uint step;
+    uint stage;
+    uint timestamp;
+
+    double t;
+    double ramp_duration;
+    double ramp;
+
+  public:
+    ESSPRKStepper() = default;
+    ESSPRKStepper(const StepperInput& stepper_input);
+
+    uint GetOrder() const { return this->order; }
+    uint GetNumStages() const { return this->nstages; }
+    double GetDT() const { return this->dt; }
+
+    void SetDT(double dt) { this->dt = dt; };
+
+    uint GetStep() const { return this->step; }
+    uint GetStage() const { return this->stage; }
+    uint GetTimestamp() const { return this->timestamp; }
+
+    double GetTimeAtCurrentStage() const { return this->t + this->dt * this->drk[this->stage]; }
+    double GetRamp() const { return this->ramp; }
+
+    ESSPRKStepper& operator++() {
+        ++(this->stage);
+        ++(this->timestamp);
+
+        this->stage = this->stage % this->nstages;
+
+        if (this->stage == 0) {
+            this->t += this->dt;
+            ++(this->step);
+        }
+
+        if (!Utilities::almost_equal(this->ramp_duration, 0)) {
+            this->ramp = std::tanh(2 * (this->GetTimeAtCurrentStage() / 86400) / this->ramp_duration);
+        }
+
+        return *this;
+    }
+
+    template <typename ElementType>
+    void UpdateState(ElementType& elt) const {
+        auto& state      = elt.data.state;
+        auto& next_state = elt.data.state[this->stage + 1];
+
+        set_constant(next_state.q, 0.0);
+
+        for (uint s = 0; s <= this->stage; ++s) {
+            next_state.q += this->ark[stage][s] * state[s].q + this->dt * this->brk[stage][s] * state[s].solution;
+        }
+
+        if (this->stage + 1 == this->nstages)
+            std::swap(state[0].q, state[this->nstages].q);
+    }
+
+  private:
+    void InitializeCoefficients();
+};
+
+#endif
