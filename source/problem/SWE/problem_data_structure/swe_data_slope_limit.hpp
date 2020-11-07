@@ -8,6 +8,8 @@ struct SlopeLimit {
         : hdif_at_gp(nbound),
           midpts_coord(nbound),
           baryctr_coord_neigh(nbound),
+          local_nodeID(nvrtx),
+          node_mult(nvrtx),
           median(nbound),
           alpha(nbound),
           a_elem(2 * nbound),
@@ -23,7 +25,7 @@ struct SlopeLimit {
           q_at_midpts(SWE::n_variables, nbound),
           bath_at_vrtx(nvrtx),
           bath_at_midpts(nbound),
-          wet_neigh(nbound),
+          wet_neigh(nbound, false),
           q_at_baryctr_neigh(nbound),
           bath_at_baryctr_neigh(nbound),
           delta(SWE::n_variables, nbound),
@@ -50,6 +52,10 @@ struct SlopeLimit {
     Point<2> baryctr_coord;
     AlignedVector<Point<2>> midpts_coord;
     AlignedVector<Point<2>> baryctr_coord_neigh;
+
+    /* Averaging data */
+    std::vector<uint> local_nodeID;
+    std::vector<uint> node_mult;
 
     // COCKBURN-SHU
     AlignedVector<StatVector<double, SWE::n_dimensions>> median;

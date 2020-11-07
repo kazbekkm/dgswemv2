@@ -22,11 +22,23 @@ void get_source(const StepperType& stepper, ElementType& elt) {
     row(internal.dhc_at_gp, GlobalCoord::x) = elt.ComputeDUgp(GlobalCoord::x, row(state.q, SWE::Variables::hc));
     row(internal.dhc_at_gp, GlobalCoord::y) = elt.ComputeDUgp(GlobalCoord::y, row(state.q, SWE::Variables::hc));
 
+    double E = 0.0;
+    double D = 0.0;
+    if (std::all_of(source.wet_neigh.begin(), source.wet_neigh.end(), [](const auto& wet) { return wet == true; })) {
+        source.q_avg                           = column(state.q, 0);
+        source.aux_avg[SWE::Auxiliaries::bath] = state.aux(0, 0);
+        source.aux_avg[SWE::Auxiliaries::h] = source.q_avg[SWE::Variables::ze] + source.aux_avg[SWE::Auxiliaries::bath];
+        E = stepper.GetRamp() * entrainment_rate(source.q_avg, source.aux_avg, source.manning, source.g_manning_n_sq);
+        D = deposition_rate(source.q_avg, source.aux_avg);
+    }
     for (uint gp = 0; gp < elt.data.get_ngp_internal(); ++gp) {
         internal.rho_mix_at_gp[gp] = rho_mixture(column(internal.q_at_gp, gp), column(internal.aux_at_gp, gp));
-        internal.E_at_gp[gp]       = entrainment_rate(
+        internal.E_at_gp[gp]       = E;
+        internal.D_at_gp[gp]       = D;
+        /*internal.E_at_gp[gp]       = entrainment_rate(
             column(internal.q_at_gp, gp), column(internal.aux_at_gp, gp), source.manning, source.g_manning_n_sq);
-        internal.D_at_gp[gp]            = deposition_rate(column(internal.q_at_gp, gp), column(internal.aux_at_gp, gp));
+        internal.D_at_gp[gp]            = deposition_rate(column(internal.q_at_gp, gp), column(internal.aux_at_gp,
+        gp));*/
         internal.sed_mom_frac_at_gp[gp] = (Global::rho_bed - internal.rho_mix_at_gp[gp]) /
                                           (internal.rho_mix_at_gp[gp] * (1.0 - Global::sat_sediment));
     }

@@ -9,6 +9,8 @@ void Problem::interface_kernel(const ProblemStepperType& stepper, InterfaceType&
     auto& state_ex    = intface.data_ex.state[stepper.GetStage()];
     auto& boundary_in = intface.data_in.boundary[intface.bound_id_in];
     auto& boundary_ex = intface.data_ex.boundary[intface.bound_id_ex];
+    auto& source_in   = intface.data_in.source;
+    auto& source_ex   = intface.data_ex.source;
 
     if (SWE::SedimentTransport::bed_update) {
         row(boundary_in.aux_at_gp, SWE::Auxiliaries::bath) =
@@ -31,6 +33,8 @@ void Problem::interface_kernel(const ProblemStepperType& stepper, InterfaceType&
     }
 
     if (SWE::SedimentTransport::bed_update) {
+        source_in.wet_neigh[intface.bound_id_in] = intface.data_ex.wet_dry_state.wet;
+        source_ex.wet_neigh[intface.bound_id_ex] = intface.data_in.wet_dry_state.wet;
         if (intface.data_in.wet_dry_state.wet && intface.data_ex.wet_dry_state.wet) {
             intface.specialization.ComputeBedFlux(intface);
             state_in.b_rhs -= intface.IntegrationPhiIN(boundary_in.qb_hat_at_gp);

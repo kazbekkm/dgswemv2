@@ -7,6 +7,7 @@ template <typename BoundaryType>
 void Problem::boundary_kernel(const ProblemStepperType& stepper, BoundaryType& bound) {
     auto& state    = bound.data.state[stepper.GetStage()];
     auto& boundary = bound.data.boundary[bound.bound_id];
+    auto& source   = bound.data.source;
 
     if (SWE::SedimentTransport::bed_update) {
         row(boundary.aux_at_gp, SWE::Auxiliaries::bath) = bound.ComputeUgp(row(state.aux, SWE::Auxiliaries::bath));
@@ -22,6 +23,7 @@ void Problem::boundary_kernel(const ProblemStepperType& stepper, BoundaryType& b
     }
 
     if (SWE::SedimentTransport::bed_update) {
+        source.wet_neigh[bound.bound_id] = bound.data.wet_dry_state.wet;
         if (bound.data.wet_dry_state.wet) {
             bound.boundary_condition.ComputeBedFlux(stepper, bound);
             state.b_rhs -= bound.IntegrationPhi(boundary.qb_hat_at_gp);

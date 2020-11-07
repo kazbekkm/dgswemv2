@@ -28,6 +28,7 @@ template <typename DistributedBoundaryType>
 void Problem::distributed_boundary_kernel(const ProblemStepperType& stepper, DistributedBoundaryType& dbound) {
     auto& state    = dbound.data.state[stepper.GetStage()];
     auto& boundary = dbound.data.boundary[dbound.bound_id];
+    auto& source   = dbound.data.source;
 
     if (SWE::SedimentTransport::bed_update) {
         row(boundary.aux_at_gp, SWE::Auxiliaries::bath) = dbound.ComputeUgp(row(state.aux, SWE::Auxiliaries::bath));
@@ -42,6 +43,7 @@ void Problem::distributed_boundary_kernel(const ProblemStepperType& stepper, Dis
     }
 
     if (SWE::SedimentTransport::bed_update) {
+        source.wet_neigh[dbound.bound_id] = wet_ex;
         if (dbound.data.wet_dry_state.wet) {
             dbound.boundary_condition.ComputeBedFlux(dbound);
             state.b_rhs -= dbound.IntegrationPhi(boundary.qb_hat_at_gp);

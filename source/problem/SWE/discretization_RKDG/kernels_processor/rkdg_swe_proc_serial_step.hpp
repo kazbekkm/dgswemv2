@@ -4,6 +4,7 @@
 #include "rkdg_swe_kernels_processor.hpp"
 #include "problem/SWE/problem_slope_limiter/swe_CS_sl_serial.hpp"
 #include "problem/SWE/seabed_update/swe_seabed_update.hpp"
+#include "problem/SWE/problem_postprocessor/swe_post_sediment.hpp"
 
 namespace SWE {
 namespace RKDG {
@@ -76,6 +77,9 @@ void Problem::stage_serial(DiscretizationType<ProblemType>& discretization,
     });
 
     ++stepper;
+
+    if (SWE::SedimentTransport::suspended_load)
+        discretization.mesh.CallForEachElement([&stepper](auto& elt) { sediment_kernel(stepper, elt); });
 
     if (SWE::SedimentTransport::bed_slope_limiting)
         SWE::CS_seabed_slope_limiter(stepper, discretization);

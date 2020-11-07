@@ -11,8 +11,10 @@ double rho_mixture(const Column<HybMatrix<double, SWE::n_variables>>& q,
     return SWE::Global::rho_water * (1.0 - c) + SWE::Global::rho_sediment * c;
 }
 
-double entrainment_rate(const Column<HybMatrix<double, SWE::n_variables>>& q,
-                        const Column<HybMatrix<double, SWE::n_auxiliaries>>& aux,
+double entrainment_rate(/*const Column<HybMatrix<double, SWE::n_variables>>& q,
+                        const Column<HybMatrix<double, SWE::n_auxiliaries>>& aux,*/
+                        const StatVector<double, SWE::n_variables>& q,
+                        const StatVector<double, SWE::n_auxiliaries>& aux,
                         const bool manning,
                         const double gn_sq) {
     if (SWE::SedimentTransport::suspended_load) {
@@ -39,8 +41,10 @@ double entrainment_rate(const Column<HybMatrix<double, SWE::n_variables>>& q,
     return 0.0;
 }
 
-double deposition_rate(const Column<HybMatrix<double, SWE::n_variables>>& q,
-                       const Column<HybMatrix<double, SWE::n_auxiliaries>>& aux) {
+double deposition_rate(/*const Column<HybMatrix<double, SWE::n_variables>>& q,
+                        const Column<HybMatrix<double, SWE::n_auxiliaries>>& aux,*/
+                       const StatVector<double, SWE::n_variables>& q,
+                       const StatVector<double, SWE::n_auxiliaries>& aux) {
     if (SWE::SedimentTransport::suspended_load) {
         const double d  = SWE::SedimentTransport::d;
         const double nu = SWE::SedimentTransport::v;

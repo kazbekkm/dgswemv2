@@ -4,6 +4,7 @@
 #include "rkdg_swe_kernels_processor.hpp"
 #include "problem/SWE/problem_slope_limiter/swe_CS_sl_ompi.hpp"
 #include "problem/SWE/seabed_update/swe_seabed_update.hpp"
+#include "problem/SWE/problem_postprocessor/swe_post_sediment.hpp"
 
 namespace SWE {
 namespace RKDG {
@@ -134,6 +135,77 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
 #pragma omp master
     { ++(stepper); }
 #pragma omp barrier
+
+    if (SWE::SedimentTransport::suspended_load) {
+        for (uint su_id = begin_sim_id; su_id < end_sim_id; ++su_id) {
+            sim_units[su_id]->discretization.mesh.CallForEachElement(
+                [&stepper](auto& elt) { sediment_kernel(stepper, elt); });
+        }
+    }
+
+#ifdef HAS_PETSC
+    if (SWE::SedimentTransport::bed_update) {
+#pragma omp barrier
+#pragma omp master
+        {
+            VecSet(global_data.global_bath_at_node, 0.0);
+            set_constant(global_data.bath_at_node, 0.0);
+
+            for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
+                sim_units[su_id]->discretization.mesh.CallForEachElement([&stepper, &global_data](auto& elt) {
+                    auto& state       = elt.data.state[stepper.GetStage()];
+                    auto& sl_state    = elt.data.slope_limit_state;
+                    sl_state.q_lin    = elt.ProjectBasisToLinear(state.q);
+                    sl_state.bath_lin = elt.ProjectBasisToLinear(row(state.aux, SWE::Auxiliaries::bath));
+                    for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
+                        global_data.bath_at_node[sl_state.local_nodeID[node]] += sl_state.bath_lin[node];
+                    }
+                });
+            }
+
+            VecSetValues(global_data.global_bath_at_node,
+                         global_data.local_bath_nodeIDs.size(),
+                         &global_data.local_bath_nodeIDs.front(),
+                         global_data.bath_at_node.data(),
+                         ADD_VALUES);
+
+            VecAssemblyBegin(global_data.global_bath_at_node);
+            VecAssemblyEnd(global_data.global_bath_at_node);
+
+            VecScatterBegin(global_data.bath_scatter,
+                            global_data.global_bath_at_node,
+                            global_data.local_bath_at_node,
+                            INSERT_VALUES,
+                            SCATTER_FORWARD);
+            VecScatterEnd(global_data.bath_scatter,
+                          global_data.global_bath_at_node,
+                          global_data.local_bath_at_node,
+                          INSERT_VALUES,
+                          SCATTER_FORWARD);
+
+            double* d_ptr;
+            VecGetArray(global_data.local_bath_at_node, &d_ptr);
+
+            for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
+                sim_units[su_id]->discretization.mesh.CallForEachElement([stepper, d_ptr](auto& elt) {
+                    auto& state    = elt.data.state[stepper.GetStage()];
+                    auto& sl_state = elt.data.slope_limit_state;
+                    auto& internal = elt.data.internal;
+                    for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
+                        sl_state.bath_at_vrtx[node] = d_ptr[sl_state.local_nodeID[node]] / sl_state.node_mult[node];
+                    }
+                    row(state.aux, SWE::Auxiliaries::bath) = elt.ProjectLinearToBasis(sl_state.bath_at_vrtx);
+                    row(sl_state.q_lin, SWE::Variables::ze) += (sl_state.bath_lin - sl_state.bath_at_vrtx);
+                    row(state.q, SWE::Variables::ze) =
+                        elt.ProjectLinearToBasis(row(sl_state.q_lin, SWE::Variables::ze));
+                });
+            }
+
+            VecRestoreArray(global_data.local_bath_at_node, &d_ptr);
+        }
+#pragma omp barrier
+    }
+#endif
 
     if (SWE::SedimentTransport::bed_slope_limiting) {
         for (uint su_id = begin_sim_id; su_id < end_sim_id; ++su_id) {

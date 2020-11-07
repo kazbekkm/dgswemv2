@@ -28,7 +28,7 @@ struct Data {
             this->boundary.push_back(SWE::Boundary(this->ngp_boundary[bound_id]));
         }
 
-        this->source = SWE::Source(this->nnode);
+        this->source = SWE::Source(this->nnode, this->nbound, this->nvrtx);
 
         this->wet_dry_state = SWE::WetDry(this->nvrtx);
 

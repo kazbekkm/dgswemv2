@@ -4,8 +4,15 @@
 namespace SWE {
 struct Source {
     Source() = default;
-    Source(const uint nnode)
-        : parsed_meteo_data(nnode), tau_s(nnode), p_atm(nnode), tide_pot(nnode), manning_n(nnode) {}
+    Source(const uint nnode, const uint nbound, const uint nvrtx)
+        : parsed_meteo_data(nnode),
+          tau_s(nnode),
+          p_atm(nnode),
+          tide_pot(nnode),
+          manning_n(nnode),
+          wet_neigh(nbound, false),
+          hc_lin(nvrtx),
+          hc_at_vrtx(nvrtx) {}
 
     double coriolis_f = 0.0;
 
@@ -19,6 +26,12 @@ struct Source {
 
     std::vector<double> tide_pot;
     std::vector<double> manning_n;
+
+    std::vector<bool> wet_neigh;
+    StatVector<double, SWE::n_variables> q_avg;
+    StatVector<double, SWE::n_auxiliaries> aux_avg;
+    DynRowVector<double> hc_lin;
+    DynRowVector<double> hc_at_vrtx;
 };
 }
 
