@@ -17,10 +17,10 @@ void reconstruct_dzedu(std::vector<std::unique_ptr<OMPISimUnitType>>& sim_units,
                 for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
                     subvector(global_data.derivatives_at_node,
                               derivative.local_nodeID[node] * GN::n_dddbath_terms,
-                              GN::n_dimensions) += derivative.dze_at_baryctr;
+                              GN::n_dimensions) += derivative.dze_at_baryctr * derivative.area;
                     subvector(global_data.derivatives_at_node,
                               derivative.local_nodeID[node] * GN::n_dddbath_terms + GN::n_dimensions,
-                              GN::n_du_terms) += derivative.du_at_baryctr;
+                              GN::n_du_terms) += derivative.du_at_baryctr * derivative.area;
                 }
             });
         }
@@ -90,7 +90,7 @@ void reconstruct_ddu(std::vector<std::unique_ptr<OMPISimUnitType>>& sim_units, P
                 for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
                     subvector(global_data.derivatives_at_node,
                               derivative.local_nodeID[node] * GN::n_dddbath_terms,
-                              GN::n_ddu_terms) += derivative.ddu_at_baryctr;
+                              GN::n_ddu_terms) += derivative.ddu_at_baryctr * derivative.area;
                 }
             });
         }

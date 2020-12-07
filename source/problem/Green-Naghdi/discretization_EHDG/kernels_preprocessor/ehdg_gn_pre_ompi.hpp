@@ -206,7 +206,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType>>& s
                 auto& derivative = elt.data.derivative;
                 for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
                     derivative.local_nodeID[node] = nodeIDmap[elt.GetNodeID()[node]];
-                    node_mult[derivative.local_nodeID[node]] += 1.0;
+                    node_mult[derivative.local_nodeID[node]] += derivative.area;
                 }
             });
         }

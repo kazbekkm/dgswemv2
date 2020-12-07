@@ -98,7 +98,7 @@ struct Derivative {
 
     /* Averaging data */
     std::vector<uint> local_nodeID;
-    std::vector<uint> node_mult;
+    std::vector<double> node_mult;
 
     /* Transform from midpoints to vertexes */
     StatMatrix<double, SWE::n_variables, SWE::n_variables> T;

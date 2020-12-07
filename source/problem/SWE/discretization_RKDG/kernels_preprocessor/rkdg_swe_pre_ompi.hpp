@@ -81,7 +81,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
 
             ISCreateGeneral(MPI_COMM_SELF,
                             global_data.local_bath_nodeIDs.size(),
-                            (int*)&global_data.local_bath_nodeIDs.front(),
+                            (int*)&global_data.local_bath_nodeIDs.front(),  // dangerous cast!
                             PETSC_COPY_VALUES,
                             &(global_data.bath_node_mult_from));
             ISCreateStride(
@@ -100,8 +100,9 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
                 sim_units[su_id]->discretization.mesh.CallForEachElement([&node_mult, &nodeIDmap](auto& elt) {
                     auto& sl_state = elt.data.slope_limit_state;
                     for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
+                        sl_state.area               = elt.GetShape().GetArea();
                         sl_state.local_nodeID[node] = nodeIDmap[elt.GetNodeID()[node]];
-                        node_mult[sl_state.local_nodeID[node]] += 1.0;
+                        node_mult[sl_state.local_nodeID[node]] += sl_state.area;
                     }
                 });
             }

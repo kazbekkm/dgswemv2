@@ -54,8 +54,9 @@ struct SlopeLimit {
     AlignedVector<Point<2>> baryctr_coord_neigh;
 
     /* Averaging data */
+    double area = 0.0;
     std::vector<uint> local_nodeID;
-    std::vector<uint> node_mult;
+    std::vector<double> node_mult;
 
     // COCKBURN-SHU
     AlignedVector<StatVector<double, SWE::n_dimensions>> median;

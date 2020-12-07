@@ -158,7 +158,8 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
                     sl_state.q_lin    = elt.ProjectBasisToLinear(state.q);
                     sl_state.bath_lin = elt.ProjectBasisToLinear(row(state.aux, SWE::Auxiliaries::bath));
                     for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
-                        global_data.bath_at_node[sl_state.local_nodeID[node]] += sl_state.bath_lin[node];
+                        global_data.bath_at_node[sl_state.local_nodeID[node]] +=
+                            sl_state.bath_lin[node] * sl_state.area;
                     }
                 });
             }

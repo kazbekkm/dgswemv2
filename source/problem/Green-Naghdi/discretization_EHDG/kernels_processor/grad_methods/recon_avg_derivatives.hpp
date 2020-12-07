@@ -14,7 +14,7 @@ void reconstruct_dze(ProblemDiscretizationType& discretization,
         for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
             subvector(
                 global_data.derivatives_at_node, derivative.local_nodeID[node] * GN::n_dimensions, GN::n_dimensions) +=
-                derivative.dze_at_baryctr;
+                derivative.dze_at_baryctr * derivative.area;
         }
     });
 
@@ -43,7 +43,7 @@ void reconstruct_du(ProblemDiscretizationType& discretization,
         for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
             subvector(
                 global_data.derivatives_at_node, derivative.local_nodeID[node] * GN::n_du_terms, GN::n_du_terms) +=
-                derivative.du_at_baryctr;
+                derivative.du_at_baryctr * derivative.area;
         }
     });
 
@@ -74,7 +74,7 @@ void reconstruct_ddu(ProblemDiscretizationType& discretization,
         for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
             subvector(
                 global_data.derivatives_at_node, derivative.local_nodeID[node] * GN::n_ddu_terms, GN::n_ddu_terms) +=
-                derivative.ddu_at_baryctr;
+                derivative.ddu_at_baryctr * derivative.area;
         }
     });
 
