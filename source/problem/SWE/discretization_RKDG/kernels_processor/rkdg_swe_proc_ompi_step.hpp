@@ -166,7 +166,7 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
 
             VecSetValues(global_data.global_bath_at_node,
                          global_data.local_bath_nodeIDs.size(),
-                         &global_data.local_bath_nodeIDs.front(),
+                         global_data.local_bath_nodeIDs.data(),
                          global_data.bath_at_node.data(),
                          ADD_VALUES);
 
@@ -188,7 +188,7 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
             VecGetArray(global_data.local_bath_at_node, &d_ptr);
 
             for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
-                sim_units[su_id]->discretization.mesh.CallForEachElement([stepper, d_ptr](auto& elt) {
+                sim_units[su_id]->discretization.mesh.CallForEachElement([&stepper, d_ptr](auto& elt) {
                     auto& state    = elt.data.state[stepper.GetStage()];
                     auto& sl_state = elt.data.slope_limit_state;
                     auto& internal = elt.data.internal;

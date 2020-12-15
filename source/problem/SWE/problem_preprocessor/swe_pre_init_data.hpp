@@ -13,6 +13,7 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
         auto& shape    = elt.GetShape();
         auto& state    = elt.data.state[0];
         auto& internal = elt.data.internal;
+        auto& source   = elt.data.source;
 
         const uint nnode = elt.data.get_nnode();
         const uint ngp   = elt.data.get_ngp_internal();
@@ -28,6 +29,14 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
             elt.ComputeDUgp(GlobalCoord::x, row(state.aux, SWE::Auxiliaries::bath));
         row(internal.db_at_gp, GlobalCoord::y) =
             elt.ComputeDUgp(GlobalCoord::y, row(state.aux, SWE::Auxiliaries::bath));
+
+        // purely finger in the wind setup
+        double bath = state.aux(0, 0); // average bath
+        if (bath < 10.0) {
+            source.total_entrainment = 3.5 - bath / 4.0;
+        } else {
+            source.total_entrainment = bath / 100.0 + 0.9;
+        }
 
         if (problem_specific_input.spherical_projection.type == SWE::SphericalProjectionType::Enable) {
             DynRowVector<double> y_node(nnode);

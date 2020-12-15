@@ -32,6 +32,8 @@ struct Source {
     StatVector<double, SWE::n_auxiliaries> aux_avg;
     DynRowVector<double> hc_lin;
     DynRowVector<double> hc_at_vrtx;
+
+    double total_entrainment = 0.0;
 };
 }
 

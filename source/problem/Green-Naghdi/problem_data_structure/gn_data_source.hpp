@@ -4,7 +4,7 @@
 namespace GN {
 struct Source : SWE::Source {
     Source() = default;
-    Source(const uint nnode) : SWE::Source(nnode) {}
+    Source(const uint nnode, const uint nbound, const uint nvrtx) : SWE::Source(nnode, nbound, nvrtx) {}
 
     bool dispersive_correction = true;
 };

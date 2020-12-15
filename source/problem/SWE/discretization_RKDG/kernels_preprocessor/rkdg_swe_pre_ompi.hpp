@@ -58,7 +58,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
 
             uint local_max_nodeID  = *std::max_element(nodeIDs.begin(), nodeIDs.end());
             uint global_max_nodeID = 0;
-            MPI_Allreduce(&local_max_nodeID, &global_max_nodeID, 1, MPI_UNSIGNED, MPI_MAX, MPI_COMM_WORLD);
+            MPI_Allreduce(&local_max_nodeID, &global_max_nodeID, 1, MPI_UINT32_T, MPI_MAX, MPI_COMM_WORLD);
 
             VecCreateMPI(MPI_COMM_WORLD, global_max_nodeID + 1, PETSC_DECIDE, &(global_data.global_bath_at_node));
             VecCreateSeq(MPI_COMM_SELF, global_data.local_bath_nodeIDs.size(), &(global_data.local_bath_at_node));
@@ -66,7 +66,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
 
             ISCreateGeneral(MPI_COMM_SELF,
                             global_data.local_bath_nodeIDs.size(),
-                            (int*)&global_data.local_bath_nodeIDs.front(),
+                            global_data.local_bath_nodeIDs.data(),
                             PETSC_COPY_VALUES,
                             &(global_data.bath_from));
             ISCreateStride(MPI_COMM_SELF, global_data.local_bath_nodeIDs.size(), 0, 1, &(global_data.bath_to));
@@ -81,7 +81,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
 
             ISCreateGeneral(MPI_COMM_SELF,
                             global_data.local_bath_nodeIDs.size(),
-                            (int*)&global_data.local_bath_nodeIDs.front(),  // dangerous cast!
+                            global_data.local_bath_nodeIDs.data(),  // dangerous cast!
                             PETSC_COPY_VALUES,
                             &(global_data.bath_node_mult_from));
             ISCreateStride(
@@ -99,8 +99,8 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
             for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
                 sim_units[su_id]->discretization.mesh.CallForEachElement([&node_mult, &nodeIDmap](auto& elt) {
                     auto& sl_state = elt.data.slope_limit_state;
+                    sl_state.area  = elt.GetShape().GetArea();
                     for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
-                        sl_state.area               = elt.GetShape().GetArea();
                         sl_state.local_nodeID[node] = nodeIDmap[elt.GetNodeID()[node]];
                         node_mult[sl_state.local_nodeID[node]] += sl_state.area;
                     }
@@ -109,7 +109,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType<Prob
 
             VecSetValues(global_data.global_bath_node_mult,
                          global_data.local_bath_nodeIDs.size(),
-                         &global_data.local_bath_nodeIDs.front(),
+                         global_data.local_bath_nodeIDs.data(),
                          node_mult.data(),
                          ADD_VALUES);
 

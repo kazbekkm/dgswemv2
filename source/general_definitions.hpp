@@ -25,8 +25,8 @@
 #include <cstdlib>
 #include <ctime>
 
-using uint  = unsigned int;
-using uchar = unsigned char;
+using uint  = std::uint32_t;
+using uchar = std::uint8_t;
 
 #include "utilities/linear_algebra.hpp"
 #include "utilities/edge_types.hpp"

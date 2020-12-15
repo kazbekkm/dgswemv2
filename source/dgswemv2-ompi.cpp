@@ -17,10 +17,9 @@ int main(int argc, char* argv[]) {
     } else {
         auto t1 = std::chrono::high_resolution_clock::now();
         int provided;
-        MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-
-        if (provided != MPI_THREAD_MULTIPLE) {
-            if (omp_get_max_threads() > 1) {
+        if (omp_get_max_threads() > 1) {
+            MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+            if (provided != MPI_THREAD_MULTIPLE) {
                 std::cerr << "dgswemv2 with ompi parallelization was submitted with more than \n"
                           << "1 thread per MPI rank and MPI_THREAD_MULTIPLE is not provided!\n"
                           << "Please either find an MPI implementation that supports MPI_THREAD_MULTIPLE,\n"
@@ -29,6 +28,8 @@ int main(int argc, char* argv[]) {
                 MPI_Abort(MPI_COMM_WORLD, MPI_ERR_OTHER);
                 return 1;
             }
+        } else {
+            MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &provided);
         }
 
 #ifdef HAS_PETSC

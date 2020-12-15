@@ -471,13 +471,13 @@ void Problem::reset_PETSC_solver(std::vector<std::unique_ptr<OMPISimUnitType>>& 
         dc_global_dof_offsets.resize(n_localities);
     }
     MPI_Gather(
-        &dc_global_dof_offset, 1, MPI_UNSIGNED, &dc_global_dof_offsets.front(), 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+        &dc_global_dof_offset, 1, MPI_UINT32_T, &dc_global_dof_offsets.front(), 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
     uint n_dc_global_dofs = 0;
     if (locality_id == 0) {
         n_dc_global_dofs = std::accumulate(dc_global_dof_offsets.begin(), dc_global_dof_offsets.end(), 0);
     }
-    MPI_Bcast(&n_dc_global_dofs, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&n_dc_global_dofs, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
     const uint n_global_dofs = (sim_units.front()->discretization.mesh.GetP() + 1) * GN::n_dimensions;
     MatCreateBAIJ(MPI_COMM_WORLD,
@@ -511,7 +511,7 @@ void Problem::reset_PETSC_solver(std::vector<std::unique_ptr<OMPISimUnitType>>& 
         }
     }
     MPI_Scatter(
-        &dc_global_dof_offsets.front(), 1, MPI_UNSIGNED, &dc_global_dof_offset, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
+        &dc_global_dof_offsets.front(), 1, MPI_UINT32_T, &dc_global_dof_offset, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
     for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
         sim_units[su_id]->communicator.ReceiveAll(CommTypes::dc_global_dof_indx, stepper.GetTimestamp());
