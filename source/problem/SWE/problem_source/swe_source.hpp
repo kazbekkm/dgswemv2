@@ -29,9 +29,9 @@ void get_source(const StepperType& stepper, ElementType& elt) {
         source.aux_avg[SWE::Auxiliaries::bath] = state.aux(0, 0);
         source.aux_avg[SWE::Auxiliaries::h] = source.q_avg[SWE::Variables::ze] + source.aux_avg[SWE::Auxiliaries::bath];
         E = stepper.GetRamp() * entrainment_rate(source.q_avg, source.aux_avg, source.manning, source.g_manning_n_sq);
-        if (source.total_entrainment < 0.0) E = 0.0;
+        if (source.aux_avg[SWE::Auxiliaries::bath] - source.b_o > source.total_entrainment)
+            E = 0.0;
         D = deposition_rate(source.q_avg, source.aux_avg);
-        source.total_entrainment -= 1.0 / (1.0 - Global::sat_sediment) * (E - D) *  stepper.GetDT();
     }
     for (uint gp = 0; gp < elt.data.get_ngp_internal(); ++gp) {
         internal.rho_mix_at_gp[gp] = rho_mixture(column(internal.q_at_gp, gp), column(internal.aux_at_gp, gp));

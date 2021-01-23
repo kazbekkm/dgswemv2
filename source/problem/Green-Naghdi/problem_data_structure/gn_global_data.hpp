@@ -33,6 +33,7 @@ struct GlobalData : SWE::GlobalData {
     VecScatter node_mult_scatter;
     Vec local_node_mult;
 
+    PetscLogStage reset_stage;
     PetscLogStage con_stage;
     PetscLogStage sol_stage;
     PetscLogStage prop_stage;

@@ -144,11 +144,19 @@ void Problem::ompi_solve_global_dc_problem(std::vector<std::unique_ptr<OMPISimUn
         });
     }
 
+#pragma omp master
+    { PetscLogStagePop(); }
+
 #pragma omp barrier
 #pragma omp master
     {
+        PetscLogStagePush(global_data.reset_stage);
+
         if (SWE::PostProcessing::wetting_drying)
             reset_PETSC_solver(sim_units, global_data, stepper, begin_sim_id, end_sim_id);
+
+        PetscLogStagePop();
+        PetscLogStagePush(global_data.con_stage);
 
         Mat& w1_hat_w1_hat = global_data.w1_hat_w1_hat;
         Vec& w1_hat_rhs    = global_data.w1_hat_rhs;

@@ -88,6 +88,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType>>& s
         // KSPGetPC(global_data.dc_ksp, &(global_data.dc_pc));
         // PCSetType(global_data.dc_pc, PCLU);
 
+        PetscLogStageRegister("Reset", &global_data.reset_stage);
         PetscLogStageRegister("Construct", &global_data.con_stage);
         PetscLogStageRegister("Solve", &global_data.sol_stage);
         PetscLogStageRegister("Propagate", &global_data.prop_stage);
@@ -159,8 +160,8 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType>>& s
         MPI_Allreduce(&local_max_nodeID, &global_max_nodeID, 1, MPI_UINT32_T, MPI_MAX, MPI_COMM_WORLD);
 
         VecCreateMPI(MPI_COMM_WORLD,
-                     (global_max_nodeID + 1) * GN::n_dddbath_terms,
                      PETSC_DECIDE,
+                     (global_max_nodeID + 1) * GN::n_dddbath_terms,
                      &(global_data.global_derivatives_at_node));
         VecSetBlockSize(global_data.global_derivatives_at_node, GN::n_dddbath_terms);
         VecCreateSeq(MPI_COMM_SELF,
@@ -182,7 +183,7 @@ void Problem::preprocessor_ompi(std::vector<std::unique_ptr<OMPISimUnitType>>& s
                          global_data.derivatives_to,
                          &(global_data.derivatives_scatter));
 
-        VecCreateMPI(MPI_COMM_WORLD, global_max_nodeID + 1, PETSC_DECIDE, &(global_data.global_node_mult));
+        VecCreateMPI(MPI_COMM_WORLD, PETSC_DECIDE, global_max_nodeID + 1, &(global_data.global_node_mult));
         VecCreateSeq(MPI_COMM_SELF, global_data.local_nodeIDs.size(), &(global_data.local_node_mult));
 
         ISCreateGeneral(MPI_COMM_SELF,

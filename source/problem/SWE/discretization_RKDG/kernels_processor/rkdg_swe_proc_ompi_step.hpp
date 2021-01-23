@@ -148,8 +148,11 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
 #pragma omp barrier
 #pragma omp master
         {
+            PetscLogStagePush(global_data.continuity_limiter_stage);
+
             VecSet(global_data.global_bath_at_node, 0.0);
             set_constant(global_data.bath_at_node, 0.0);
+            set_constant(global_data.dbound_bath_at_node, 0.0);
 
             for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
                 sim_units[su_id]->discretization.mesh.CallForEachElement([&stepper, &global_data](auto& elt) {
@@ -164,10 +167,15 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
                 });
             }
 
+            uint it = 0;
+            for (const auto& node : global_data.dbound_local_bath_nodeIDs) {
+                global_data.dbound_bath_at_node[it++] = global_data.bath_at_node[node];
+            }
+
             VecSetValues(global_data.global_bath_at_node,
-                         global_data.local_bath_nodeIDs.size(),
-                         global_data.local_bath_nodeIDs.data(),
-                         global_data.bath_at_node.data(),
+                         global_data.dbound_loc_to_glob_nodeIDs.size(),
+                         global_data.dbound_loc_to_glob_nodeIDs.data(),
+                         global_data.dbound_bath_at_node.data(),
                          ADD_VALUES);
 
             VecAssemblyBegin(global_data.global_bath_at_node);
@@ -187,13 +195,19 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
             double* d_ptr;
             VecGetArray(global_data.local_bath_at_node, &d_ptr);
 
+            it = 0;
+            for (const auto& node : global_data.dbound_local_bath_nodeIDs) {
+                global_data.bath_at_node[node] = d_ptr[it++];
+            }
+
             for (uint su_id = 0; su_id < sim_units.size(); ++su_id) {
-                sim_units[su_id]->discretization.mesh.CallForEachElement([&stepper, d_ptr](auto& elt) {
+                sim_units[su_id]->discretization.mesh.CallForEachElement([&stepper, &global_data](auto& elt) {
                     auto& state    = elt.data.state[stepper.GetStage()];
                     auto& sl_state = elt.data.slope_limit_state;
                     auto& internal = elt.data.internal;
                     for (uint node = 0; node < elt.GetNodeID().size(); ++node) {
-                        sl_state.bath_at_vrtx[node] = d_ptr[sl_state.local_nodeID[node]] / sl_state.node_mult[node];
+                        sl_state.bath_at_vrtx[node] =
+                            global_data.bath_at_node[sl_state.local_nodeID[node]] / sl_state.node_mult[node];
                     }
                     row(state.aux, SWE::Auxiliaries::bath) = elt.ProjectLinearToBasis(sl_state.bath_at_vrtx);
                     row(sl_state.q_lin, SWE::Variables::ze) += (sl_state.bath_lin - sl_state.bath_at_vrtx);
@@ -203,6 +217,8 @@ void Problem::stage_ompi(std::vector<std::unique_ptr<OMPISimUnitType<ProblemType
             }
 
             VecRestoreArray(global_data.local_bath_at_node, &d_ptr);
+
+            PetscLogStagePop();
         }
 #pragma omp barrier
     }

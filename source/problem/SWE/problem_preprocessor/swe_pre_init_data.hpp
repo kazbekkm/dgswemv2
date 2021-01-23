@@ -31,11 +31,13 @@ void initialize_data_serial(MeshType& mesh, const ProblemSpecificInputType& prob
             elt.ComputeDUgp(GlobalCoord::y, row(state.aux, SWE::Auxiliaries::bath));
 
         // purely finger in the wind setup
-        double bath = state.aux(0, 0); // average bath
-        if (bath < 10.0) {
-            source.total_entrainment = 3.5 - bath / 4.0;
+        source.b_o = state.aux(0, 0);  // average_bath
+        if (source.b_o < 0.0) {
+            source.total_entrainment = 1.5 - source.b_o / 2.0;
+        } else if (source.b_o >= 0.0 && source.b_o < 10.0) {
+            source.total_entrainment = 1.5 - source.b_o / 20.0;
         } else {
-            source.total_entrainment = bath / 100.0 + 0.9;
+            source.total_entrainment = source.b_o / 100.0 + 0.9;
         }
 
         if (problem_specific_input.spherical_projection.type == SWE::SphericalProjectionType::Enable) {

@@ -33,6 +33,7 @@ struct Source {
     DynRowVector<double> hc_lin;
     DynRowVector<double> hc_at_vrtx;
 
+    double b_o               = 0.0;
     double total_entrainment = 0.0;
 };
 }
