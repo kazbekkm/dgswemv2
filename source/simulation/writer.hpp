@@ -8,6 +8,8 @@
 template <typename ProblemType>
 class Writer {
   private:
+    bool serializing;
+    bool deserializing;
     bool writing_output;
     std::string output_path;
 
@@ -46,11 +48,15 @@ class Writer {
     std::ofstream& GetLogFile() const { return this->log_file; }
     void StartLog();
 
+    bool Serializing() { return this->serializing; }
+    bool Deserializing() { return this->deserializing; }
     bool WritingOutput() { return this->writing_output; }
     void WriteFirstStep(const typename ProblemType::ProblemStepperType& stepper,
                         typename ProblemType::ProblemMeshType& mesh);
     void WriteOutput(const typename ProblemType::ProblemStepperType& stepper,
                      typename ProblemType::ProblemMeshType& mesh);
+    void Serialize(typename ProblemType::ProblemMeshType& mesh);
+    void Deserialize(typename ProblemType::ProblemMeshType& mesh);
 
   private:
     void InitializeMeshGeometryVTK(typename ProblemType::ProblemMeshType& mesh);
@@ -59,7 +65,9 @@ class Writer {
 
 template <typename ProblemType>
 Writer<ProblemType>::Writer(const WriterInput& writer_input)
-    : writing_output(writer_input.writing_output),
+    : serializing(writer_input.serializing),
+      deserializing(writer_input.deserializing),
+      writing_output(writer_input.writing_output),
       output_path(writer_input.output_path),
       writing_log_file(writer_input.writing_log_file),
       verbose_log_file(writer_input.verbose_log_file),
@@ -139,8 +147,9 @@ void Writer<ProblemType>::WriteOutput(const typename ProblemType::ProblemStepper
         std::ifstream file_geom(this->vtk_file_name_geom, std::ios_base::binary);
         std::ifstream file_data(this->vtk_file_name_raw, std::ios_base::binary);
 
-        uint step                   = stepper.GetStep();
-        std::string file_name_merge = this->output_path + mesh.GetMeshName() + "_data_" + std::to_string(step) + ".vtk";
+        uint step_completed = std::lround(stepper.GetTimeAtCurrentStage() / stepper.GetDT());
+        std::string file_name_merge =
+            this->output_path + mesh.GetMeshName() + "_data_" + std::to_string(step_completed) + ".vtk";
         std::ofstream file_merge(file_name_merge, std::ios_base::binary);
 
         file_merge << file_geom.rdbuf() << file_data.rdbuf();
@@ -175,8 +184,9 @@ void Writer<ProblemType>::WriteOutput(const typename ProblemType::ProblemStepper
         std::ifstream file_geom_foot(this->vtu_file_name_geom_foot, std::ios_base::binary);
         std::ifstream file_data(this->vtu_file_name_raw, std::ios_base::binary);
 
-        uint step                   = stepper.GetStep();
-        std::string file_name_merge = this->output_path + mesh.GetMeshName() + "_data_" + std::to_string(step) + ".vtu";
+        uint step_completed = std::lround(stepper.GetTimeAtCurrentStage() / stepper.GetDT());
+        std::string file_name_merge =
+            this->output_path + mesh.GetMeshName() + "_data_" + std::to_string(step_completed) + ".vtu";
         std::ofstream file_merge(file_name_merge, std::ios_base::binary);
 
         file_merge << file_geom_head.rdbuf() << file_data.rdbuf() << file_geom_foot.rdbuf();
@@ -190,6 +200,16 @@ void Writer<ProblemType>::WriteOutput(const typename ProblemType::ProblemStepper
     if (this->writing_modal_output && (stepper.GetStep() % this->modal_output_frequency == 0)) {
         ProblemType::write_modal_data(stepper, mesh, this->output_path);
     }
+}
+
+template <typename ProblemType>
+void Writer<ProblemType>::Serialize(typename ProblemType::ProblemMeshType& mesh) {
+    ProblemType::serialize_modal_data(mesh, this->output_path);
+}
+
+template <typename ProblemType>
+void Writer<ProblemType>::Deserialize(typename ProblemType::ProblemMeshType& mesh) {
+    ProblemType::deserialize_modal_data(mesh, this->output_path);
 }
 
 template <typename ProblemType>

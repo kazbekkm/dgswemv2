@@ -75,6 +75,12 @@ void OMPISimulation<ProblemType>::Run() {
         ProblemType::preprocessor_ompi(this->sim_units, this->global_data, this->stepper, begin_sim_id, end_sim_id);
 
         for (uint su_id = begin_sim_id; su_id < end_sim_id; ++su_id) {
+            if (this->sim_units[su_id]->writer.Deserializing()) {
+                this->sim_units[su_id]->writer.Deserialize(this->sim_units[su_id]->discretization.mesh);
+            }
+        }
+
+        for (uint su_id = begin_sim_id; su_id < end_sim_id; ++su_id) {
             if (this->sim_units[su_id]->writer.WritingLog()) {
                 this->sim_units[su_id]->writer.GetLogFile() << std::endl
                                                             << "Launching Simulation!" << std::endl
@@ -89,6 +95,12 @@ void OMPISimulation<ProblemType>::Run() {
 
         for (uint step = 1; step <= this->n_steps; ++step) {
             ProblemType::step_ompi(this->sim_units, this->global_data, this->stepper, begin_sim_id, end_sim_id);
+        }
+
+        for (uint su_id = begin_sim_id; su_id < end_sim_id; ++su_id) {
+            if (this->sim_units[su_id]->writer.Serializing()) {
+                this->sim_units[su_id]->writer.Serialize(this->sim_units[su_id]->discretization.mesh);
+            }
         }
     }  // close omp parallel region
 }

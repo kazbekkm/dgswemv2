@@ -34,7 +34,7 @@ class ImplicitStepper {
           step(0),
           stage(0),
           timestamp(0),
-          t(0.),
+          t(stepper_input.t_o),
           ramp_duration(stepper_input.ramp_duration),
           ramp(Utilities::almost_equal(ramp_duration, 0) ? 1. : 0.),
           ramp_next(Utilities::almost_equal(ramp_duration, 0)

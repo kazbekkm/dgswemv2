@@ -26,6 +26,7 @@ class SecondStrangStepper {
     const Second& GetSecondStepper() const { return this->second; }
 
     // In second strang spliting it's the second stepper that does major stepping
+    double GetDT() const { return this->second.GetDT(); }
     uint GetStep() const { return this->second.GetStep(); }
     double GetTimeAtCurrentStage() const { return this->second.GetTimeAtCurrentStage(); }
 

@@ -272,17 +272,25 @@ struct Problem {
 
     // writing output kernels
     static void write_VTK_data(ProblemMeshType& mesh, std::ofstream& raw_data_file) {
-        return SWE::write_VTK_data(mesh, raw_data_file);
+        SWE::write_VTK_data(mesh, raw_data_file);
     }
 
     static void write_VTU_data(ProblemMeshType& mesh, std::ofstream& raw_data_file) {
-        return SWE::write_VTU_data(mesh, raw_data_file);
+        SWE::write_VTU_data(mesh, raw_data_file);
     }
 
     static void write_modal_data(const ProblemStepperType& stepper,
                                  ProblemMeshType& mesh,
                                  const std::string& output_path) {
-        return SWE::write_modal_data(stepper, mesh, output_path);
+        SWE::write_modal_data(stepper, mesh, output_path);
+    }
+
+    static void serialize_modal_data(ProblemMeshType& mesh, const std::string& output_path) {
+        SWE::serialize_modal_data(mesh, output_path);
+    }
+
+    static void deserialize_modal_data(ProblemMeshType& mesh, const std::string& output_path) {
+        SWE::deserialize_modal_data(mesh, output_path);
     }
 
     template <typename ElementType>

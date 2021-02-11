@@ -185,6 +185,14 @@ struct Problem {
         SWE::write_modal_data(stepper, mesh, output_path);
     }
 
+    static void serialize_modal_data(ProblemMeshType& mesh, const std::string& output_path) {
+        SWE::serialize_modal_data(mesh, output_path);
+    }
+
+    static void deserialize_modal_data(ProblemMeshType& mesh, const std::string& output_path) {
+        SWE::deserialize_modal_data(mesh, output_path);
+    }
+
     template <typename ElementType>
     static double compute_residual_L2(const ProblemStepperType& stepper, ElementType& elt) {
         return SWE::compute_residual_L2(stepper, elt);

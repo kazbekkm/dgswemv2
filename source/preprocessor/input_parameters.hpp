@@ -33,6 +33,7 @@ struct StepperInput {
     struct tm T_end;
 
     double run_time;
+    double t_o{0.0};
     double dt;
 
     uint nstages;
@@ -42,6 +43,8 @@ struct StepperInput {
 };
 
 struct WriterInput {
+    bool serializing{false};
+    bool deserializing{false};
     bool writing_output{false};
     std::string output_path;
 
@@ -159,6 +162,8 @@ InputParameters<ProblemInput>::InputParameters(const std::string& input_string) 
 
             this->stepper_input.run_time =
                 difftime(timegm(&this->stepper_input.T_end), timegm(&this->stepper_input.T_start));
+            if (time_stepping["t_o"])
+                this->stepper_input.t_o = time_stepping["t_o"].as<double>();
             this->stepper_input.dt      = time_stepping["dt"].as<double>();
             this->stepper_input.order   = time_stepping["order"].as<uint>();
             this->stepper_input.nstages = time_stepping["nstages"].as<uint>();
@@ -209,6 +214,14 @@ InputParameters<ProblemInput>::InputParameters(const std::string& input_string) 
         } else {
             std::string err_msg{"Error: Output YAML node is malformatted\n"};
             throw std::logic_error(err_msg);
+        }
+
+        if (out_node["serialize"]) {
+            this->writer_input.serializing = true;
+        }
+
+        if (out_node["deserialize"]) {
+            this->writer_input.deserializing = true;
         }
 
         if (out_node["logfile"]) {
@@ -327,8 +340,10 @@ void InputParameters<ProblemInput>::write_to(const std::string& output_filename)
     strftime(end_time_str.data(), 21, "%d-%m-%Y %H:%M:%S", &this->stepper_input.T_end);
 
     YAML::Node timestepping;
-    timestepping["start_time"]    = std::string(start_time_str.data());
-    timestepping["end_time"]      = std::string(end_time_str.data());
+    timestepping["start_time"] = std::string(start_time_str.data());
+    timestepping["end_time"]   = std::string(end_time_str.data());
+    if (this->stepper_input.t_o != 0.0)
+        timestepping["t_o"] = this->stepper_input.t_o;
     timestepping["dt"]            = this->stepper_input.dt;
     timestepping["order"]         = this->stepper_input.order;
     timestepping["nstages"]       = this->stepper_input.nstages;
@@ -343,7 +358,9 @@ void InputParameters<ProblemInput>::write_to(const std::string& output_filename)
     if (this->writer_input.writing_output) {
         YAML::Node writer;
 
-        writer["path"] = this->writer_input.output_path;
+        writer["path"]        = this->writer_input.output_path;
+        writer["serialize"]   = this->writer_input.serializing;
+        writer["deserialize"] = this->writer_input.deserializing;
 
         if (this->writer_input.writing_log_file) {
             writer["logfile"]["name"]    = this->writer_input.log_file_name;
