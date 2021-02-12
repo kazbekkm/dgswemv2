@@ -7,6 +7,7 @@ void serialize_modal_data(MeshType& mesh, const std::string& output_path) {
     std::string file_name = output_path + mesh.GetMeshName() + "_serialized_modal_data.txt";
     std::ofstream file(file_name);
     mesh.CallForEachElement([&file](auto& elt) {
+        file << elt.data.wet_dry_state.wet << std::endl;
         for (uint var = 0; var < SWE::n_variables; ++var) {
             for (uint dof = 0; dof < elt.data.get_ndof(); ++dof) {
                 file << elt.data.state[0].q(var, dof) << std::endl;
@@ -26,6 +27,7 @@ void deserialize_modal_data(MeshType& mesh, const std::string& output_path) {
     std::string file_name = output_path + mesh.GetMeshName() + "_serialized_modal_data.txt";
     std::ifstream file(file_name);
     mesh.CallForEachElement([&file](auto& elt) {
+        file >> elt.data.wet_dry_state.wet;
         for (uint var = 0; var < SWE::n_variables; ++var) {
             for (uint dof = 0; dof < elt.data.get_ndof(); ++dof) {
                 file >> elt.data.state[0].q(var, dof);
