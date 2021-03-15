@@ -96,7 +96,8 @@ void Problem::dispersive_correction_kernel(const ESSPRKStepper& stepper, Element
     const auto w1y    = elt.ComputeUgp(row(state.w1, GlobalCoord::y));
 
     set_constant(state.rhs, 0.0);
-    if (elt.data.wet_dry_state.wet && elt.data.source.dispersive_correction && !elt.data.slope_limit_state.troubled) {
+    if (elt.data.wet_dry_state.wet && elt.data.source.dispersive_correction && !elt.data.slope_limit_state.troubled 
+        && std::find(elt.data.slope_limit_state.wet_neigh.begin(), elt.data.slope_limit_state.wet_neigh.end(), false) == elt.data.slope_limit_state.wet_neigh.end()) {
         row(internal.source_at_gp, SWE::Variables::qx) = Global::g / NDParameters::alpha * vec_cw_mult(dze_dx, h) - w1x;
         row(internal.source_at_gp, SWE::Variables::qy) = Global::g / NDParameters::alpha * vec_cw_mult(dze_dy, h) - w1y;
         row(state.rhs, SWE::Variables::qx) = elt.IntegrationPhi(row(internal.source_at_gp, SWE::Variables::qx));

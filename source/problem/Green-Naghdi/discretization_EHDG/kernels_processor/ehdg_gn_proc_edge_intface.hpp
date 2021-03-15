@@ -13,6 +13,14 @@ void Problem::local_dc_edge_interface_kernel(const ESSPRKStepper& stepper, EdgeI
         auto& boundary_in   = edge_int.interface.data_in.boundary[edge_int.interface.bound_id_in];
         auto& boundary_ex   = edge_int.interface.data_ex.boundary[edge_int.interface.bound_id_ex];
 
+        auto& wd_state_in = edge_int.interface.data_in.wet_dry_state;
+        auto& wd_state_ex = edge_int.interface.data_ex.wet_dry_state;
+        auto& sl_state_in = edge_int.interface.data_in.slope_limit_state;
+        auto& sl_state_ex = edge_int.interface.data_ex.slope_limit_state;
+
+        sl_state_in.wet_neigh[edge_int.interface.bound_id_in] = wd_state_ex.wet;
+        sl_state_ex.wet_neigh[edge_int.interface.bound_id_ex] = wd_state_in.wet;
+
         double tau = -20;  // hardcode the tau value here
 
         // at this point h_at_gp

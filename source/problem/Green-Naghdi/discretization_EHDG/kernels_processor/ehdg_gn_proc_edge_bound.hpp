@@ -10,6 +10,11 @@ void Problem::local_dc_edge_boundary_kernel(const ESSPRKStepper& stepper, EdgeBo
         auto& internal      = edge_bound.boundary.data.internal;
         auto& boundary      = edge_bound.boundary.data.boundary[edge_bound.boundary.bound_id];
 
+        auto& wd_state = edge_bound.boundary.data.wet_dry_state;
+        auto& sl_state = edge_bound.boundary.data.slope_limit_state;
+
+        sl_state.wet_neigh[edge_bound.boundary.bound_id] = wd_state.wet;
+
         double tau = -20;  // hardcode the tau value here
 
         // at this point h_at_gp
