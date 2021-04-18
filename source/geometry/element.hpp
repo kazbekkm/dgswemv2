@@ -2,6 +2,7 @@
 #define CLASS_ELEMENT_HPP
 
 #include "general_definitions.hpp"
+#include "integration/integrations_2D.hpp"
 
 namespace Geometry {
 template <uint dimension, typename MasterType, typename ShapeType, typename DataType>
@@ -547,8 +548,8 @@ void Element<dimension, MasterType, ShapeType, DataType>::WriteSurveyPointData(
 template <uint dimension, typename MasterType, typename ShapeType, typename DataType>
 template <typename F, typename InputArrayType>
 double Element<dimension, MasterType, ShapeType, DataType>::ComputeResidualL2(const F& f, const InputArrayType& u) {
-    // At this point we use maximum possible p for Dunavant integration
-    std::pair<DynVector<double>, AlignedVector<Point<dimension>>> rule = this->master->integration.GetRule(20);
+    // At this point we use maximum possible p for Gauss-Legendre 2D integration
+    std::pair<DynVector<double>, AlignedVector<Point<dimension>>> rule = Integration::Triangle_GaussLegendre_2D{}.GetRule(64);
 
     // get u_gp
     DynMatrix<double> phi_gp = this->master->basis.GetPhi(this->master->p, rule.second);

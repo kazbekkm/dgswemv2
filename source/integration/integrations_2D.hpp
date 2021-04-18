@@ -39,6 +39,18 @@ class Dunavant_2D : public Integration<2> {
      */
     std::pair<std::vector<double>, AlignedVector<Point<3>>> GPData(const uint p);
 };
+
+/**
+ * Quadrature rule for the master triangle.
+ * Triangle_GaussLegendre_2D describes a numerical quadrature rule for a triangle with vertices at
+ * (-1,1), (1,-1), and (-1,1)
+ */
+class Triangle_GaussLegendre_2D : public Integration<2> {
+  public:
+    std::pair<DynVector<double>, AlignedVector<Point<2>>> GetRule(const uint p) override;
+
+    uint GetNumGP(const uint p) override;
+};
 }
 
 #endif

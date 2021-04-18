@@ -103,6 +103,20 @@ add_test(
 )
 
 add_executable(
+  test_integ_triangle_gausslegendre_2d_exe
+  test_integ_triangle_gausslegendre_2d.cpp
+  ${PROJECT_SOURCE_DIR}/source/integration/integrations_1D/integration_gausslegendre_1D.cpp
+  ${PROJECT_SOURCE_DIR}/source/integration/integrations_2D/integration_triangle_gausslegendre_2D.cpp
+)
+
+target_compile_definitions(test_integ_triangle_gausslegendre_2d_exe PRIVATE ${LINALG_DEFINITION})
+
+add_test(
+  Unit_integ_triangle_gausslegendre_2d
+  test_integ_triangle_gausslegendre_2d_exe
+)
+
+add_executable(
   test_shape_straight_triangle_exe
   test_shape_straight_triangle.cpp
   ${PROJECT_SOURCE_DIR}/source/shape/shapes_2D/shape_straighttriangle.cpp

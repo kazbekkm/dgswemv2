@@ -89,6 +89,7 @@ list (APPEND SOURCES
   ${PROJECT_SOURCE_DIR}/source/shape/shapes_2D/shape_straighttriangle.cpp
 
   ${PROJECT_SOURCE_DIR}/source/integration/integrations_2D/integration_dunavant_2D.cpp
+  ${PROJECT_SOURCE_DIR}/source/integration/integrations_2D/integration_triangle_gausslegendre_2D.cpp
   ${PROJECT_SOURCE_DIR}/source/integration/integrations_1D/integration_gausslegendre_1D.cpp
 )
 
