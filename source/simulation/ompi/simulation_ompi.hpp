@@ -110,18 +110,38 @@ void OMPISimulation<ProblemType>::ComputeL2Residual() {
     int locality_id;
     MPI_Comm_rank(MPI_COMM_WORLD, &locality_id);
 
-    double global_l2{0};
-    double residual_l2{0};
+    double ze_global_l2{0};
+    double qx_global_l2{0};
+    double qy_global_l2{0};
+    double hc_global_l2{0};
+
+    double ze_residual_L2 = 0;
+    double qx_residual_L2 = 0;
+    double qy_residual_L2 = 0;
+    double hc_residual_L2 = 0;
 
     for (auto& sim_unit : this->sim_units) {
         sim_unit->discretization.mesh.CallForEachElement(
-            [this, &residual_l2](auto& elt) { residual_l2 += ProblemType::compute_residual_L2(this->stepper, elt); });
+        [this, &ze_residual_L2, &qx_residual_L2, &qy_residual_L2,  &hc_residual_L2](auto& elt) { 
+            auto l2 = ProblemType::compute_residual_L2(this->stepper, elt);
+            ze_residual_L2 += l2[0]; 
+            qx_residual_L2 += l2[1]; 
+            qy_residual_L2 += l2[2]; 
+            hc_residual_L2 += l2[3]; 
+        });
     }
 
-    MPI_Reduce(&residual_l2, &global_l2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    MPI_Reduce(&ze_residual_L2, &ze_global_l2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&qx_residual_L2, &qx_global_l2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&qy_residual_L2, &qy_global_l2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&hc_residual_L2, &hc_global_l2, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (locality_id == 0) {
-        std::cout << "L2 error: " << std::setprecision(15) << std::sqrt(global_l2) << std::endl;
+        std::cout << "ze L2 error: " << std::setprecision(15) << std::sqrt(ze_global_l2) << std::endl;
+        std::cout << "qx L2 error: " << std::setprecision(15) << std::sqrt(qx_global_l2) << std::endl;
+        std::cout << "qy L2 error: " << std::setprecision(15) << std::sqrt(qy_global_l2) << std::endl;
+        std::cout << "hc L2 error: " << std::setprecision(15) << std::sqrt(hc_global_l2) << std::endl;
     }
 }
 

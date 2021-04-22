@@ -132,7 +132,7 @@ class Element {
     void WriteSurveyPointData(const InputArrayType& u, AlignedVector<OutputArrayType>& survey_point_data);
 
     template <typename F, typename InputArrayType>
-    double ComputeResidualL2(const F& f, const InputArrayType& u);
+    DynVector<double> ComputeResidualL2(const F& f, const InputArrayType& u);
 
   public:
     using ElementMasterType = MasterType;
@@ -547,7 +547,7 @@ void Element<dimension, MasterType, ShapeType, DataType>::WriteSurveyPointData(
 
 template <uint dimension, typename MasterType, typename ShapeType, typename DataType>
 template <typename F, typename InputArrayType>
-double Element<dimension, MasterType, ShapeType, DataType>::ComputeResidualL2(const F& f, const InputArrayType& u) {
+DynVector<double> Element<dimension, MasterType, ShapeType, DataType>::ComputeResidualL2(const F& f, const InputArrayType& u) {
     // At this point we use maximum possible p for Gauss-Legendre 2D integration
     std::pair<DynVector<double>, AlignedVector<Point<dimension>>> rule = Integration::Triangle_GaussLegendre_2D{}.GetRule(64);
 
@@ -584,12 +584,7 @@ double Element<dimension, MasterType, ShapeType, DataType>::ComputeResidualL2(co
         // Placeholder for nonconstant Jacobian
     }
 
-    double L2 = 0;
-    for (uint var = 0; var < nvar; ++var) {
-        L2 += l2[var];
-    }
-
-    return L2;
+    return l2;
 }
 }
 

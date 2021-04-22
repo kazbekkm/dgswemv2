@@ -275,7 +275,7 @@ struct Problem {
     }
 
     template <typename ElementType>
-    static double compute_residual_L2(const ProblemStepperType& stepper, ElementType& elt) {
+    static DynVector<double> compute_residual_L2(const ProblemStepperType& stepper, ElementType& elt) {
         return SWE::compute_residual_L2(stepper, elt);
     }
 
