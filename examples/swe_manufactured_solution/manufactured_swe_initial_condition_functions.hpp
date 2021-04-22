@@ -4,7 +4,7 @@
 #include "utilities/ignore.hpp"
 
 namespace SWE {
-inline StatVector<double, SWE::n_variables> ic_q(const double t, const Point<2>& pt) {
+inline StatVector<double, SWE::n_variables> ic_q(const double t_, const Point<2>& pt) {
     const double x = pt[GlobalCoord::x];
     const double y = pt[GlobalCoord::y];
 
@@ -28,6 +28,8 @@ inline StatVector<double, SWE::n_variables> ic_q(const double t, const Point<2>&
 
     double ic_qy = zo * cos(w * (x - x1)) * sin(w * (y - y1)) * sin(w * (t + tau)) /
                    (cos(w * (x2 - x1)) * cos(w * (y2 - y1)));*/
+
+    double t = t_ / 3.0;
 
     double ic_ze = exp(sin(3 * x) * sin(3 * y) - sin(3 * t));
     double ic_qx = cos(x - 4 * t);
