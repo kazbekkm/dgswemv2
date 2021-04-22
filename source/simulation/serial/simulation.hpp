@@ -83,12 +83,21 @@ void Simulation<ProblemType>::Run() {
 
 template <typename ProblemType>
 void Simulation<ProblemType>::ComputeL2Residual() {
-    double residual_L2 = 0;
+    double ze_residual_L2 = 0;
+    double qx_residual_L2 = 0;
+    double qy_residual_L2 = 0;
 
     this->discretization.mesh.CallForEachElement(
-        [this, &residual_L2](auto& elt) { residual_L2 += ProblemType::compute_residual_L2(this->stepper, elt); });
+        [this, &ze_residual_L2, &qx_residual_L2, &qy_residual_L2](auto& elt) { 
+            auto l2 = ProblemType::compute_residual_L2(this->stepper, elt);
+            ze_residual_L2 += l2[0]; 
+            qx_residual_L2 += l2[1]; 
+            qy_residual_L2 += l2[2]; 
+        });
 
-    std::cout << "L2 error: " << std::setprecision(15) << std::sqrt(residual_L2) << std::endl;
+    std::cout << "ze L2 error: " << std::setprecision(15) << std::sqrt(ze_residual_L2) << std::endl;
+    std::cout << "qx L2 error: " << std::setprecision(15) << std::sqrt(qx_residual_L2) << std::endl;
+    std::cout << "qy L2 error: " << std::setprecision(15) << std::sqrt(qy_residual_L2) << std::endl;
 }
 
 template <typename ProblemType>
