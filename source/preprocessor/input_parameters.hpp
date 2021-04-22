@@ -157,7 +157,7 @@ InputParameters<ProblemInput>::InputParameters(const std::string& input_string) 
             strptime(start_time.c_str(), "%d-%m-%Y %H:%M:%S", &this->stepper_input.T_start);
             strptime(end_time.c_str(), "%d-%m-%Y %H:%M:%S", &this->stepper_input.T_end);
 
-            this->stepper_input.run_time =
+            this->stepper_input.run_time = 
                 difftime(timegm(&this->stepper_input.T_end), timegm(&this->stepper_input.T_start));
             this->stepper_input.dt      = time_stepping["dt"].as<double>();
             this->stepper_input.order   = time_stepping["order"].as<uint>();

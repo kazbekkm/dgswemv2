@@ -2,7 +2,7 @@
 #define SWE_SOURCE_FUNCTIONS_HPP
 
 namespace SWE {
-inline StatVector<double, SWE::n_variables> source_q(const double t, const Point<2>& pt) {
+inline StatVector<double, SWE::n_variables> source_q(const double t_, const Point<2>& pt) {
     const double x = pt[GlobalCoord::x];
     const double y = pt[GlobalCoord::y];
 
@@ -75,7 +75,11 @@ inline StatVector<double, SWE::n_variables> source_q(const double t, const Point
                          (1. / cos(w * (-y1 + y2))),
                 2);*/
 
+    double t = t_ / 3.0;
+
     double source_ze = -3 * exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)) * cos(3 * t) + cos(4 * t + y) + sin(4 * t - x);
+
+    source_ze += 3 * exp(sin(3 * x) * sin(3 * y) - sin(3 * t)) * cos(3 * t) - exp(sin(3 * x) * sin(3 * y) - sin(3 * t)) * cos(3 * t);
 
     double source_qx =
         (cos(4 * t - x) * cos(4 * t + y)) / (2 + exp(-sin(3 * t) + sin(3 * x) * sin(3 * y))) - 4 * sin(4 * t - x) +
@@ -87,6 +91,8 @@ inline StatVector<double, SWE::n_variables> source_q(const double t, const Point
         (3 * exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)) * cos(4 * t - x) * cos(3 * y) * sin(3 * x) * sin(4 * t + y)) /
             pow(2 + exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)), 2);
 
+    source_qx += -4 * sin(x - 4 * t) + 4.0 / 3.0 * sin(x - 4 * t);
+
     double source_qy =
         4 * cos(4 * t + y) +
         3. * exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)) * (2 + exp(-sin(3 * t) + sin(3 * x) * sin(3 * y))) *
@@ -97,6 +103,8 @@ inline StatVector<double, SWE::n_variables> source_q(const double t, const Point
             pow(2 + exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)), 2) -
         (3 * exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)) * cos(3 * y) * sin(3 * x) * pow(sin(4 * t + y), 2)) /
             pow(2 + exp(-sin(3 * t) + sin(3 * x) * sin(3 * y)), 2);
+
+    source_qy += -4 * cos(y + 4 * t) + 4.0 / 3.0 * cos(y + 4 * t);
 
     StatVector<double, SWE::n_variables> source_q{source_ze, source_qx, source_qy};
 
